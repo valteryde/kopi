@@ -28,6 +28,11 @@ def data_directory():
     return BASE_DIR / "devdata" / "data"
 
 
+def work_directory():
+    """Ciphertext staged for upload. Development keeps it at ./devdata/work."""
+    return BASE_DIR / "devdata" / "work"
+
+
 DATA_DIR = data_directory()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
