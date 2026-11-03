@@ -1,0 +1,32 @@
+#login {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #111;
+    padding: 24px;
+    color: var(--ink);
+}
+
+.login-card {
+    width: min(400px, 100%);
+    background: #fff;
+    padding: 28px 24px 22px;
+}
+
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
+}
+.login-brand img { width: 48px; height: 48px; }
+.login-brand strong {
+    display: block;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+.login-brand span { color: var(--muted); font-size: 13px; }

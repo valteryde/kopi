@@ -1,0 +1,46 @@
+{% macro icon(name) -%}
+<i class="ph ph-{{ name }}"></i>
+{%- endmacro %}
+
+{% macro page_head(title, icon_name, lede) %}
+<header class="head">
+    <div>
+        <h1>{{ icon(icon_name) }} {{ title }}</h1>
+        <p class="lede">{{ lede }}</p>
+    </div>
+    {% if caller is defined %}
+    <div class="head-actions">
+        {{ caller() }}
+    </div>
+    {% endif %}
+</header>
+{% endmacro %}
+
+{% macro search_field(id, placeholder, label, rows, empty) %}
+<label class="search">
+    {{ icon("magnifying-glass") }}
+    <input id="{{ id }}" type="search" placeholder="{{ placeholder }}" aria-label="{{ label }}" data-filter="{{ rows }}" data-empty-for="{{ empty }}">
+</label>
+{% endmacro %}
+
+{% macro kv(icon_name, key, value, mono=false) %}
+<div class="kv">{{ icon(icon_name) }}<div class="k">{{ key }}</div><div class="v{% if mono %} mono{% endif %}">{{ value }}</div></div>
+{% endmacro %}
+
+{% macro empty_line(name, text) %}
+<p class="empty" data-empty="{{ name }}" hidden>{{ icon("magnifying-glass") }} {{ text }}</p>
+{% endmacro %}
+
+{% macro pick(href, icon_name, title, sub="", current=false) %}
+<a class="pick{% if current %} is-on{% endif %}" href="{{ href }}">
+    <span class="pick-main">{{ icon(icon_name) }} <strong>{{ title }}</strong></span>
+    {% if sub %}<span class="pick-sub">{{ sub }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{% macro stacked_field(icon_name, label, name, value="", type="text", placeholder="") %}
+<label class="stack">
+    <span>{{ icon(icon_name) }} {{ label }}</span>
+    <input type="{{ type }}" name="{{ name }}" value="{{ value }}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}>
+</label>
+{% endmacro %}

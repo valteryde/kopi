@@ -1,0 +1,85 @@
+@font-face {
+    font-family: "Instrument Sans";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/instrument-sans-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Instrument Sans";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../fonts/instrument-sans-500.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Instrument Sans";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../fonts/instrument-sans-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Instrument Sans";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../fonts/instrument-sans-700.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/ibm-plex-mono-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../fonts/ibm-plex-mono-500.woff2") format("woff2");
+}
+
+:root {
+    --sidebar-width: 228px;
+    --green: #3b7d23;
+    --lime: #8ed973;
+    --sand: #bead94;
+    --ink: #111111;
+    --muted: #5e5e5e;
+    --line: #e6e6e6;
+    --rule: #111111;
+}
+
+* { box-sizing: border-box; border-radius: 2px; }
+*::before, *::after { border-radius: 2px; }
+
+[hidden] { display: none !important; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+    font-family: "Instrument Sans", "Avenir Next", "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: #fff;
+    font-size: 14.5px;
+    line-height: 1.45;
+}
+
+::selection { background: var(--lime); color: #111; }
+
+button, input, select { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+}

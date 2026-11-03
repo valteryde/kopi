@@ -9,13 +9,31 @@ DEBUG = False
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
+    "django.contrib.staticfiles",
     "kopi.apps.KopiConfig",
 ]
 
-MIDDLEWARE = []
+MIDDLEWARE = [
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+]
 
 ROOT_URLCONF = "kopi.urls"
 WSGI_APPLICATION = "kopi.wsgi.application"
+
+STATIC_URL = "/static/"
+# DEBUG is off, so WhiteNoise would not use finders on its own.
+WHITENOISE_USE_FINDERS = True
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.jinja2.Jinja2",
+        "DIRS": [BASE_DIR / "kopi" / "jinja"],
+        "APP_DIRS": False,
+        "OPTIONS": {
+            "environment": "kopi.jinja.environment",
+        },
+    },
+]
 
 # Seconds. sqlite3.connect uses this, and the connection hook sets the same pragma.
 SQLITE_BUSY_TIMEOUT = 5

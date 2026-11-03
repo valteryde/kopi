@@ -1,0 +1,130 @@
+.live { padding: 16px 18px 14px; }
+
+.live-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-end;
+}
+
+.kicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.kicker::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    background: var(--lime);
+    flex: none;
+}
+
+.live-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.live-link .ph-arrow-right { color: var(--muted); font-size: 14px; }
+
+.live-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.live-meta span, .inline-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.live-num { text-align: right; }
+.live-num strong {
+    font-size: 44px;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.9;
+    color: var(--ink);
+}
+.live-num em {
+    font-style: normal;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 4px;
+}
+.live-num .cap {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.phases {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.phase {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+
+.phase::before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 6px;
+    background: var(--sand);
+}
+
+.phase.done { color: var(--ink); }
+.phase.done::before { background: var(--green); }
+.phase.now { color: var(--ink); font-weight: 600; }
+.phase.now::before { background: var(--lime); }
+
+.log {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    background: #fafafa;
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    margin: 0 0 12px;
+    white-space: pre-wrap;
+    color: var(--ink);
+}
+
+.spin { animation: spin 0.9s linear infinite; display: inline-block; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .spin { animation: none; }
+}

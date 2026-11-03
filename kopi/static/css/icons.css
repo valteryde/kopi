@@ -1,0 +1,58 @@
+@font-face {
+    font-family: "Phosphor";
+    src: url("../fonts/Phosphor.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
+.ph {
+    font-family: "Phosphor" !important;
+    speak: never;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    letter-spacing: 0;
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    vertical-align: -0.125em;
+}
+
+.ph.ph-clock:before {
+    content: "\e19a";
+}
+
+.ph.ph-clock-counter-clockwise:before {
+    content: "\e1a0";
+}
+
+.ph.ph-hard-drive:before {
+    content: "\e29e";
+}
+
+.ph.ph-key:before {
+    content: "\e2d6";
+}
+
+.ph.ph-link:before {
+    content: "\e2e2";
+}
+
+.ph.ph-magnifying-glass:before {
+    content: "\e30c";
+}
+
+.ph.ph-pulse:before {
+    content: "\e000";
+}
+
+.ph.ph-sign-out:before {
+    content: "\e42a";
+}
+
+.ph.ph-user:before {
+    content: "\e4c2";
+}

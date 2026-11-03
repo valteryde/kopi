@@ -1,0 +1,51 @@
+{% import "macros.jinja" as ui %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kopi{% endblock %}</title>
+    <link rel="icon" href="{{ static('icon.png') }}">
+    <link rel="stylesheet" href="{{ static('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ static('css/icons.css') }}">
+    <link rel="stylesheet" href="{{ static('css/shell.css') }}">
+    <link rel="stylesheet" href="{{ static('css/controls.css') }}">
+    <link rel="stylesheet" href="{{ static('css/panel.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div id="app">
+        <div id="sidebar">
+            <div id="brand">
+                <img src="{{ static('icon.png') }}" id="sidebar-icon" alt="">
+                <div id="brand-name">Kopi</div>
+            </div>
+            <div id="sidebar-inner">
+                <a class="navbtn is-on" href="{{ url('runs') }}" aria-current="page">
+                    {{ ui.icon("clock-counter-clockwise") }}
+                    <span>Runs</span>
+                </a>
+            </div>
+            <div id="sidebar-foot">
+                <p class="keyline">{{ ui.icon("key") }} secret.key is on the data volume</p>
+                {% if who %}
+                <div class="who">
+                    {{ ui.icon("user") }}
+                    <div>
+                        <strong>{{ who.name }}</strong>
+                        <span>{{ ui.icon(who.role_icon) }} {{ who.role }}</span>
+                    </div>
+                    <form method="post" action="{{ who.logout_url }}">
+                        <button type="submit" id="sign-out" aria-label="Sign out">{{ ui.icon("sign-out") }}</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div id="main">
+            {% block main %}{% endblock %}
+        </div>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
