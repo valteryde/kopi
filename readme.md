@@ -5,10 +5,11 @@ Kopi backs up Postgres databases and folders to S3. The host encrypts every back
 - [Spec](docs/specsheet.md)
 - [Stack](docs/techstack.md)
 - [Roadmap](docs/roadmap.md)
+- [Phase 1](docs/phase-1.md)
 
 ## Development harness
 
-Postgres 18 and Garage run in Docker Compose. The Kopi application comes in a later phase. `./devdata` is bind-mounted so a worker on the host can see data and work files. Postgres and Garage keep named volumes.
+Postgres 18 and Garage run in Docker Compose. The Django project stores SQLite in `./devdata/data`. `./devdata` is bind-mounted so a worker on the host can see data and work files. Postgres and Garage keep named volumes.
 
 Dev credentials are in `.env.example`. The image build leaves them out.
 
