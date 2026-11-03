@@ -5,7 +5,7 @@ DEFAULT_SCRIPT_TIMEOUT_SECONDS = 300
 
 
 class Source(models.Model):
-    """A Postgres database or a folder tree. `pg_password` is opaque text."""
+    """A Postgres database or a folder tree. `pg_password` is age ciphertext."""
 
     class Kind(models.TextChoices):
         FOLDER = "folder"
@@ -51,7 +51,7 @@ class Source(models.Model):
 
 
 class Target(models.Model):
-    """An S3 bucket. Credential columns are opaque text."""
+    """An S3 bucket. Credential columns are age ciphertext."""
 
     name = models.CharField(max_length=200, unique=True)
     bucket = models.CharField(max_length=63)

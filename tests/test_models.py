@@ -16,6 +16,7 @@ from django.core.management import call_command
 from django.db import IntegrityError, connection
 from ward import raises, test
 
+from kopi.identity import decrypt_secret, encrypt_secret, generate_identity
 from kopi.models import Link, Run, Source, Target
 from kopi.settings import BASE_DIR, SQLITE_BUSY_TIMEOUT, data_directory
 
@@ -133,3 +134,32 @@ def _():
             timezone="Europe/Copenhagen",
             retention_kind=Link.Retention.COUNT,
         )
+
+
+@test("credential columns store age ciphertext")
+def _():
+    call_command("migrate", verbosity=0, interactive=False)
+    identity = generate_identity(Path(_TMP.name) / "secret.key")
+    source = Source.objects.create(
+        name="prod",
+        kind=Source.Kind.POSTGRES,
+        pg_host="127.0.0.1",
+        pg_database="kopi",
+        pg_user="kopi",
+        pg_password=encrypt_secret(identity, "db-password"),
+    )
+    target = Target.objects.create(
+        name="creds",
+        bucket="kopi",
+        access_key_id=encrypt_secret(identity, "GKACCESS"),
+        secret_access_key=encrypt_secret(identity, "s3-secret"),
+    )
+
+    stored_source = Source.objects.get(pk=source.pk)
+    stored_target = Target.objects.get(pk=target.pk)
+    assert "db-password" not in stored_source.pg_password
+    assert "GKACCESS" not in stored_target.access_key_id
+    assert "s3-secret" not in stored_target.secret_access_key
+    assert decrypt_secret(identity, stored_source.pg_password) == "db-password"
+    assert decrypt_secret(identity, stored_target.access_key_id) == "GKACCESS"
+    assert decrypt_secret(identity, stored_target.secret_access_key) == "s3-secret"

@@ -19,7 +19,7 @@ docker compose up -d
 
 Postgres is published on `127.0.0.1:5432`. Garage's S3 API is published on `127.0.0.1:3900`. boto3 uses that endpoint, path-style addressing, and the `garage` region. The `garage-init` container assigns the layout and creates the bucket and access key. It is safe to run again.
 
-`POSTGRES_PORT` changes the published Postgres port when 5432 is already taken. The default is 5432. Compose reads that override from `.env`. The host `pg_dump` has to be Postgres 18 or newer.
+`POSTGRES_PORT` changes the published Postgres port when 5432 is already taken. The default is 5432. Compose reads that override from `.env`. The host `pg_dump` has to be Postgres 18 or newer. Encryption tests need `age` and `age-keygen` on the host.
 
 `garage-init` exits 0 once the bucket and access key exist. `docker compose up --wait` can still return non-zero, because that container is meant to exit.
 
