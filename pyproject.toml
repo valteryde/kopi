@@ -1,0 +1,14 @@
+[project]
+name = "kopi"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "boto3>=1.35",
+    "ward>=0.67",
+]
+
+[tool.ward]
+path = ["tests"]

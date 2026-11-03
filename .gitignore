@@ -1,2 +1,13 @@
 .vscode
 .DS_Store
+.env
+__pycache__/
+*.py[cod]
+.ward/
+devdata/*
+!devdata/data/
+!devdata/work/
+devdata/data/*
+!devdata/data/.gitkeep
+devdata/work/*
+!devdata/work/.gitkeep

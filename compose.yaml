@@ -1,0 +1,58 @@
+name: kopi
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kopi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kopi}
+      POSTGRES_DB: ${POSTGRES_DB:-kopi}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./harness/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  garage:
+    image: dxflrs/garage:v2.5.0
+    command: ["/garage", "-c", "/etc/garage.toml", "server"]
+    ports:
+      - "127.0.0.1:${GARAGE_S3_PORT:-3900}:3900"
+    volumes:
+      - ./harness/garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "status"]
+      interval: 3s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  garage-init:
+    image: python:3.13-alpine
+    env_file:
+      - .env.example
+    environment:
+      GARAGE_ADMIN_URL: http://garage:3903
+    command: ["python", "-u", "/init.py"]
+    volumes:
+      - ./harness/garage/init.py:/init.py:ro
+      - ./devdata:/devdata
+    depends_on:
+      garage:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  postgres_data:
+  garage_meta:
+  garage_data:
