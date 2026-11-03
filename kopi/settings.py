@@ -1,20 +1,28 @@
 import os
 from pathlib import Path
 
+from kopi.sessionkey import load_session_key
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Development only. The image keeps Django's session key in a file on the data volume.
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only")
 DEBUG = False
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
     "django.contrib.staticfiles",
     "kopi.apps.KopiConfig",
 ]
 
 MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 
 ROOT_URLCONF = "kopi.urls"
@@ -31,6 +39,9 @@ TEMPLATES = [
         "APP_DIRS": False,
         "OPTIONS": {
             "environment": "kopi.jinja.environment",
+            "context_processors": [
+                "kopi.access.operator",
+            ],
         },
     },
 ]
@@ -58,7 +69,18 @@ def work_directory():
 
 
 DATA_DIR = data_directory()
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+# `session.key` on the data volume. A different file from `secret.key`.
+SECRET_KEY = load_session_key(DATA_DIR)
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "runs"
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
+    },
+]
 
 DATABASES = {
     "default": {

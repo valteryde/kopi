@@ -1,0 +1,24 @@
+{% extends "login_base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% block title %}Setup · Kopi{% endblock %}
+{% block subtitle %}Set up this install{% endblock %}
+
+{% block card %}
+<form method="post" action="{{ url('login') }}">
+    {{ csrf_input }}
+    <label class="stack">
+        <span>{{ ui.icon("user") }} Name</span>
+        <input type="text" name="name" value="{{ name }}" autocomplete="username" autocapitalize="none" required>
+    </label>
+    <label class="stack">
+        <span>{{ ui.icon("lock-key") }} Password</span>
+        <input type="password" name="password" autocomplete="new-password" required>
+    </label>
+    {% if error %}
+    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+    {% endif %}
+    <button type="submit" class="btn primary" id="create-admin">{{ ui.icon("user") }} Create the admin</button>
+    <p class="hint">{{ ui.icon("key") }} This screen creates the admin and secret.key.</p>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "login_base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% block title %}Save secret.key · Kopi{% endblock %}
+{% block subtitle %}Save secret.key{% endblock %}
+
+{% block card %}
+<p class="hint">{{ ui.icon("key") }} Offered once. Keep it outside any folder you back up.</p>
+<form method="post" action="{{ url('secret-key') }}">
+    {{ csrf_input }}
+    <button type="submit" class="btn primary">{{ ui.icon("download") }} Download secret.key</button>
+</form>
+<a class="btn" href="{{ url('runs') }}">{{ ui.icon("clock-counter-clockwise") }} Continue</a>
+{% endblock %}

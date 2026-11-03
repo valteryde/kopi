@@ -1,0 +1,28 @@
+{% import "macros.jinja" as ui %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kopi{% endblock %}</title>
+    <link rel="icon" href="{{ static('icon.png') }}">
+    <link rel="stylesheet" href="{{ static('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ static('css/icons.css') }}">
+    <link rel="stylesheet" href="{{ static('css/controls.css') }}">
+    <link rel="stylesheet" href="{{ static('css/login.css') }}">
+</head>
+<body>
+    <div id="login">
+        <div class="login-card">
+            <div class="login-brand">
+                <img src="{{ static('icon.png') }}" alt="">
+                <div>
+                    <strong>Kopi</strong>
+                    <span>{% block subtitle %}{% endblock %}</span>
+                </div>
+            </div>
+            {% block card %}{% endblock %}
+        </div>
+    </div>
+</body>
+</html>

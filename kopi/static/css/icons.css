@@ -29,6 +29,14 @@
     content: "\e1a0";
 }
 
+.ph.ph-download:before {
+    content: "\e20a";
+}
+
+.ph.ph-eye:before {
+    content: "\e220";
+}
+
 .ph.ph-hard-drive:before {
     content: "\e29e";
 }
@@ -41,6 +49,10 @@
     content: "\e2e2";
 }
 
+.ph.ph-lock-key:before {
+    content: "\e2fe";
+}
+
 .ph.ph-magnifying-glass:before {
     content: "\e30c";
 }
@@ -49,10 +61,22 @@
     content: "\e000";
 }
 
+.ph.ph-shield:before {
+    content: "\e40a";
+}
+
+.ph.ph-sign-in:before {
+    content: "\e428";
+}
+
 .ph.ph-sign-out:before {
     content: "\e42a";
 }
 
 .ph.ph-user:before {
     content: "\e4c2";
+}
+
+.ph.ph-warning:before {
+    content: "\e4e0";
 }

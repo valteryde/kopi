@@ -27,7 +27,6 @@
                 </a>
             </div>
             <div id="sidebar-foot">
-                <p class="keyline">{{ ui.icon("key") }} secret.key is on the data volume</p>
                 {% if who %}
                 <div class="who">
                     {{ ui.icon("user") }}
@@ -36,6 +35,7 @@
                         <span>{{ ui.icon(who.role_icon) }} {{ who.role }}</span>
                     </div>
                     <form method="post" action="{{ who.logout_url }}">
+                        {{ csrf_input }}
                         <button type="submit" id="sign-out" aria-label="Sign out">{{ ui.icon("sign-out") }}</button>
                     </form>
                 </div>

@@ -152,3 +152,18 @@ class Run(models.Model):
 
     def __str__(self):
         return f"{self.link_id} {self.status}"
+
+
+class LoginFailure(models.Model):
+    """One refused sign-in. Enough recent rows pause that account."""
+
+    username = models.CharField(max_length=150)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["username", "created_at"], name="login_failure_user_at"),
+        ]
+
+    def __str__(self):
+        return self.username

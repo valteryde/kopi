@@ -30,3 +30,20 @@
     line-height: 1;
 }
 .login-brand span { color: var(--muted); font-size: 13px; }
+
+.login-card .btn {
+    width: 100%;
+    justify-content: center;
+}
+.login-card a.btn { margin-top: 8px; }
+
+.hint {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+.hint .ph { margin-top: 2px; }
+.hint.error { color: var(--ink); margin-bottom: 8px; }
