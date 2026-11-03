@@ -5,9 +5,16 @@ progress, then hands runs to a stand-in child. Rows already running go
 first. A new claim waits for a free slot and for free space on the work
 directory. The claim transaction commits before the child is called.
 This module does not start a process.
+
+`serve` holds an exclusive flock on the data volume and loops the tick,
+then sleeps. The lock lasts until the process exits.
 """
 
+import errno
+import fcntl
+import os
 import shutil
+import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -16,7 +23,7 @@ from django.db import transaction
 
 from kopi.models import Link, Run
 from kopi.schedule import is_due
-from kopi.settings import work_directory
+from kopi.settings import data_directory, work_directory
 
 DEFAULT_SLOTS = 1
 DEFAULT_DISK_FLOOR = 0
@@ -107,3 +114,50 @@ def _claim_next(now: datetime) -> Run | None:
 def _has_room(work_dir: Path, disk_floor: int) -> bool:
     work_dir.mkdir(parents=True, exist_ok=True)
     return shutil.disk_usage(work_dir).free >= disk_floor
+
+
+def worker_lock_path() -> Path:
+    return data_directory() / "worker.lock"
+
+
+def acquire_worker_lock(path: Path | None = None):
+    """Take the exclusive worker lock, or return None when another process holds it.
+
+    The returned file stays open for the process lifetime. Closing it releases
+    the flock. This is not a database transaction.
+    """
+    target = Path(path) if path is not None else worker_lock_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle = target.open("a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as exc:
+        handle.close()
+        if isinstance(exc, BlockingIOError) or exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+            return None
+        raise
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"{os.getpid()}\n")
+    handle.flush()
+    os.fsync(handle.fileno())
+    return handle
+
+
+def serve(
+    child: Callable[[Run], None],
+    *,
+    sleep_seconds: float,
+    now: Callable[[], datetime],
+) -> bool:
+    """Loop a tick, then sleep, until the process exits.
+
+    Returns false when another worker holds the lock.
+    """
+    lock = acquire_worker_lock()
+    if lock is None:
+        return False
+    # Closing `lock` releases the flock, so this reference stays until exit.
+    while True:
+        tick(now(), child=child, work_dir=work_directory())
+        time.sleep(sleep_seconds)

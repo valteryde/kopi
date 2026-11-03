@@ -20,6 +20,9 @@ WSGI_APPLICATION = "kopi.wsgi.application"
 # Seconds. sqlite3.connect uses this, and the connection hook sets the same pragma.
 SQLITE_BUSY_TIMEOUT = 5
 
+# Seconds the worker sleeps after each tick. The tick itself does not sleep.
+WORKER_SLEEP_SECONDS = float(os.environ.get("KOPI_WORKER_SLEEP", "5"))
+
 
 def data_directory():
     override = os.environ.get("KOPI_DATA_DIR")
