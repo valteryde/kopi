@@ -21,10 +21,12 @@
                 <div id="brand-name">Kopi</div>
             </div>
             <div id="sidebar-inner">
-                <a class="navbtn is-on" href="{{ url('runs') }}" aria-current="page">
-                    {{ ui.icon("clock-counter-clockwise") }}
-                    <span>Runs</span>
+                {% for item in nav %}
+                <a class="navbtn{% if item.current %} is-on{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
+                    {{ ui.icon(item.icon) }}
+                    <span>{{ item.label }}</span>
                 </a>
+                {% endfor %}
             </div>
             <div id="sidebar-foot">
                 {% if who %}

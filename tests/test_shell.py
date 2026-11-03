@@ -37,7 +37,8 @@ def _():
     assert ">shell<" in body
     assert "Viewer" in body
     assert 'id="sign-out"' in body
-    for label in ("Sources", "Targets", "Links", "Mail", "Audit", "Users"):
+    assert ">Audit<" in body
+    for label in ("Sources", "Targets", "Links", "Mail", "Users"):
         assert f">{label}<" not in body
 
 

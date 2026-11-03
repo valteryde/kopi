@@ -32,9 +32,10 @@ def ensure_roles():
 
 
 def operator(request):
+    context = {"nav": _nav(request)}
     user = getattr(request, "user", None)
     if user is None or not user.is_authenticated:
-        return {}
+        return context
     names = set(user.groups.values_list("name", flat=True))
     if ADMIN in names:
         role, icon = "Admin", "shield"
@@ -42,11 +43,28 @@ def operator(request):
         role, icon = "Viewer", "eye"
     else:
         role, icon = "No role", "user"
-    return {
-        "who": {
-            "name": user.get_username(),
-            "role": role,
-            "role_icon": icon,
-            "logout_url": reverse("logout"),
-        }
+    context["who"] = {
+        "name": user.get_username(),
+        "role": role,
+        "role_icon": icon,
+        "logout_url": reverse("logout"),
     }
+    return context
+
+
+def _nav(request):
+    match = getattr(request, "resolver_match", None)
+    current = match.url_name if match else ""
+    items = (
+        ("runs", "clock-counter-clockwise", "Runs"),
+        ("audit", "scroll", "Audit"),
+    )
+    return [
+        {
+            "href": reverse(name),
+            "icon": icon,
+            "label": label,
+            "current": name == current,
+        }
+        for name, icon, label in items
+    ]

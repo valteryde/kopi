@@ -1,0 +1,35 @@
+{% extends "base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% block title %}Audit · Kopi{% endblock %}
+
+{% block main %}
+{% call ui.page_head("Audit", "scroll", "Logins, configuration, runs, restores, and the key. A job's own output stays on the run.") %}
+    {{ ui.search_field("find-audit", "Search the log", "Search the audit log", "#audit-rows tr", "audit") }}
+{% endcall %}
+<div class="panel">
+    <table>
+        <thead>
+            <tr>
+                <th>{{ ui.icon("clock") }} When</th>
+                <th>{{ ui.icon("user") }} Who</th>
+                <th>{{ ui.icon("list-bullets") }} Event</th>
+            </tr>
+        </thead>
+        <tbody id="audit-rows">
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.when }}</td>
+                <td>{{ ui.icon(row.who_icon) }} {{ row.who }}</td>
+                <td>{{ ui.icon(row.icon) }} {{ row.event }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {{ ui.empty_line("audit", "Nothing in the log matches.") }}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static('js/filter.js') }}"></script>
+{% endblock %}

@@ -15,7 +15,7 @@ from ward import raises, test
 
 from kopi.accounts import LOGIN_FAILURE_LIMIT
 from kopi.identity import IDENTITY_FILENAME
-from kopi.models import LoginFailure, Source
+from kopi.models import AuditEvent, LoginFailure, Source
 from kopi.sessionkey import FILENAME as SESSION_FILENAME
 from kopi.sessionkey import SessionKeyError, load_session_key
 
@@ -63,6 +63,12 @@ def _():
     assert user.check_password("correct-password")
     assert list(user.groups.values_list("name", flat=True)) == ["admin"]
     assert int(client.session[SESSION_KEY]) == user.pk
+    assert list(
+        AuditEvent.objects.filter(user=user).order_by("pk").values_list("event", flat=True)
+    ) == [
+        "Setup complete · first admin created",
+        "Key generated · offered for download once",
+    ]
 
     identity = Path(settings.DATA_DIR) / IDENTITY_FILENAME
     session_key = Path(settings.DATA_DIR) / SESSION_FILENAME

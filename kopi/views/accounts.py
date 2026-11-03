@@ -20,6 +20,7 @@ from kopi.accounts import (
     is_paused,
     record_failure,
 )
+from kopi.audit import note_key, note_login, note_setup
 from kopi.forms.accounts import LoginForm, SetupForm, first_error
 from kopi.identity import IDENTITY_FILENAME, IdentityError, load_identity
 
@@ -59,6 +60,8 @@ def _setup(request):
                     error = "Could not sign in."
                 else:
                     auth_login(request, user)
+                    note_setup(user)
+                    note_key(user)
                     request.session[OFFER_SECRET_KEY] = True
                     return redirect("login")
         else:
@@ -94,6 +97,7 @@ def _login(request):
                 else:
                     clear_failures(name)
                     auth_login(request, user)
+                    note_login(user)
                     return redirect(next_url or reverse("runs"))
         else:
             error = first_error(form)

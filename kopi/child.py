@@ -15,6 +15,7 @@ from pathlib import Path
 from django.db import transaction
 from django.utils import timezone
 
+from kopi.audit import note_run_failed, note_run_finished, note_run_started
 from kopi.identity import IDENTITY_FILENAME, Identity, decrypt_secret, load_identity
 from kopi.models import Run, Source
 from kopi.pdeath import popen_kwargs, watch_parent
@@ -490,7 +491,13 @@ def _finish_with_post(run_id, link, log, *, pre_ok, failure, progress, failed_ov
     failed = post_failed is not None or failure is not None
     if failed_override is not None:
         failed = failed_override or post_failed is not None
-    _finish(run_id, Run.Status.FAILED if failed else Run.Status.SUCCEEDED, log)
+    reason = " · ".join(part for part in (failure, post_failed) if part)
+    _finish(
+        run_id,
+        Run.Status.FAILED if failed else Run.Status.SUCCEEDED,
+        log,
+        failure=reason,
+    )
 
 
 def _begin(ctx: _Context | None, progress: Progress, phase: str) -> None:
@@ -524,12 +531,13 @@ def _prepare(work_dir: Path, run_id: int) -> Path:
 def _mark_running(run_id: int) -> None:
     now = timezone.now()
     with transaction.atomic():
-        current = Run.objects.get(pk=run_id)
+        current = Run.objects.select_related("link__source", "link__target").get(pk=run_id)
         Run.objects.filter(pk=run_id).update(
             status=Run.Status.RUNNING,
             started_at=current.started_at or now,
             updated_at=now,
         )
+        note_run_started(current.link.source.name, current.link.target.name)
 
 
 def _record_upload(run_id: int, key: str, marker: Marker) -> None:
@@ -553,7 +561,7 @@ def _delete_partial(ciphertext: Path) -> None:
     marker_path(ciphertext).unlink(missing_ok=True)
 
 
-def _finish(run_id: int, status: str, log: _Log) -> None:
+def _finish(run_id: int, status: str, log: _Log, *, failure: str = "") -> None:
     now = timezone.now()
     with transaction.atomic():
         Run.objects.filter(pk=run_id).update(
@@ -562,3 +570,9 @@ def _finish(run_id: int, status: str, log: _Log) -> None:
             updated_at=now,
             log=log.text(),
         )
+        run = Run.objects.select_related("link__source").get(pk=run_id)
+        source = run.link.source.name
+        if status == Run.Status.SUCCEEDED:
+            note_run_finished(source, run.size)
+        else:
+            note_run_failed(source, failure)

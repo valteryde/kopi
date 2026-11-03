@@ -21,12 +21,24 @@
     vertical-align: -0.125em;
 }
 
+.ph.ph-check:before {
+    content: "\e182";
+}
+
+.ph.ph-check-circle:before {
+    content: "\e184";
+}
+
 .ph.ph-clock:before {
     content: "\e19a";
 }
 
 .ph.ph-clock-counter-clockwise:before {
     content: "\e1a0";
+}
+
+.ph.ph-cpu:before {
+    content: "\e610";
 }
 
 .ph.ph-download:before {
@@ -49,6 +61,10 @@
     content: "\e2e2";
 }
 
+.ph.ph-list-bullets:before {
+    content: "\e2f2";
+}
+
 .ph.ph-lock-key:before {
     content: "\e2fe";
 }
@@ -57,8 +73,16 @@
     content: "\e30c";
 }
 
+.ph.ph-play:before {
+    content: "\e3d0";
+}
+
 .ph.ph-pulse:before {
     content: "\e000";
+}
+
+.ph.ph-scroll:before {
+    content: "\eb7a";
 }
 
 .ph.ph-shield:before {
@@ -79,4 +103,8 @@
 
 .ph.ph-warning:before {
     content: "\e4e0";
+}
+
+.ph.ph-x:before {
+    content: "\e4f6";
 }

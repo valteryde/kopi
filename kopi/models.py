@@ -167,3 +167,32 @@ class LoginFailure(models.Model):
 
     def __str__(self):
         return self.username
+
+
+class AuditEvent(models.Model):
+    """One meaningful event. Job stdout stays on the run."""
+
+    class Actor(models.TextChoices):
+        USER = "user"
+        WORKER = "worker"
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    actor = models.CharField(max_length=16, choices=Actor.choices)
+    user = models.ForeignKey(
+        "auth.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    name = models.CharField(max_length=150)
+    kind = models.CharField(max_length=32)
+    event = models.TextField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["-created_at"], name="audit_event_created"),
+        ]
+
+    def __str__(self):
+        return self.event
