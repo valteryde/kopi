@@ -15,7 +15,7 @@ from pathlib import Path
 from django.db import transaction
 from django.utils import timezone
 
-from kopi.identity import Identity
+from kopi.identity import Identity, decrypt_secret
 from kopi.models import Run, Source
 from kopi.pipeline import (
     Marker,
@@ -25,6 +25,7 @@ from kopi.pipeline import (
     read_marker,
     start_folder_producer,
 )
+from kopi.postgres import archive_database
 from kopi.storage import StorageError, object_key
 
 LOG_CAP = 1024 * 1024
@@ -332,6 +333,8 @@ def hook_env(run_id: int) -> dict[str, str]:
 
 def _archive(run, ciphertext: Path, identity: Identity, tmpdir: Path, ctx: _Context) -> Marker:
     source = run.link.source
+    if source.kind == Source.Kind.POSTGRES:
+        return _archive_postgres(source, ciphertext, identity, tmpdir, ctx, str(run.pk))
     if source.kind != Source.Kind.FOLDER:
         raise PipelineError("unsupported source")
     ctx.producer = start_folder_producer(Path(source.root_path), tmpdir=tmpdir)
@@ -346,6 +349,41 @@ def _archive(run, ciphertext: Path, identity: Identity, tmpdir: Path, ctx: _Cont
             str(run.pk),
             on_bytes=ctx.note,
             tmpdir=tmpdir,
+        )
+    finally:
+        ctx.producer = None
+
+
+def _archive_postgres(source, ciphertext, identity, tmpdir, ctx: _Context, run_id: str) -> Marker:
+    password = decrypt_secret(identity, source.pg_password)
+
+    class _Slot(list):
+        def append(self, producer) -> None:
+            ctx.producer = producer
+            if ctx.stalled.is_set():
+                producer.kill()
+                producer.wait()
+                raise _Stalled("stalled")
+            super().append(producer)
+
+        def clear(self) -> None:
+            ctx.producer = None
+            super().clear()
+
+    try:
+        return archive_database(
+            binary=source.pg_dump_binary,
+            host=source.pg_host,
+            port=source.pg_port,
+            user=source.pg_user,
+            database=source.pg_database,
+            password=password,
+            identity=identity,
+            ciphertext=ciphertext,
+            run_id=run_id,
+            tmpdir=tmpdir,
+            on_bytes=ctx.note,
+            producer_slot=_Slot(),
         )
     finally:
         ctx.producer = None

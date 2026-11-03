@@ -533,15 +533,6 @@ def _():
         assert not ciphertext.exists()
 
 
-@test("postgres sources are not archived by the folder child")
-def _():
-    with tempfile_dir() as tmp:
-        run = _run(tmp, kind=Source.Kind.POSTGRES)
-        identity = generate_identity(tmp / "secret.key")
-        execute(run.pk, identity=identity, storage=FakeStorage(), work_dir=tmp / "work")
-        assert _refresh(run).status == Run.Status.FAILED
-
-
 @contextmanager
 def tempfile_dir():
     with tempfile.TemporaryDirectory() as tmp:
