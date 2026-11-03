@@ -1,8 +1,7 @@
 """Object storage.
 
 `put`, `get`, `list`, and `delete` are the interface. `FakeStorage` is the
-hermetic stand-in used by tests. The Garage client implements the same
-methods later.
+hermetic stand-in. `S3Storage` is the boto3 client, including Garage.
 
 An object name carries the source, the UTC timestamp, and the ciphertext
 checksum, so a listing is readable without the app database. Multipart part
@@ -268,3 +267,136 @@ def _read_parts(
         if handle.read(1):
             raise StorageError("file grew while it was read")
     return bytes(written), peak, read_lengths
+
+
+class S3Storage:
+    """boto3 multipart client. The checksum is the caller's SHA-256, not the ETag."""
+
+    def __init__(
+        self,
+        *,
+        bucket: str,
+        endpoint_url: str,
+        region: str,
+        access_key_id: str,
+        secret_access_key: str,
+        path_style: bool = True,
+    ) -> None:
+        import boto3
+        from botocore.config import Config
+
+        self.bucket = bucket
+        self.client = boto3.client(
+            "s3",
+            endpoint_url=endpoint_url,
+            region_name=region,
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+            config=Config(
+                signature_version="s3v4",
+                retries={"max_attempts": 3, "mode": "standard"},
+                s3={"addressing_style": "path" if path_style else "virtual"},
+            ),
+        )
+
+    def put(
+        self,
+        key: str,
+        path: Path,
+        *,
+        checksum: str,
+        on_progress: Progress | None = None,
+    ) -> None:
+        parsed = parse_object_key(key)
+        if parsed.checksum != checksum:
+            raise StorageError("object name does not carry the checksum")
+        path = Path(path)
+        if path.is_symlink() or not path.is_file():
+            raise StorageError("put requires a regular file")
+        plan = upload_plan(path.stat().st_size)
+        if plan.size == 0:
+            if hashlib.sha256(b"").hexdigest() != checksum:
+                raise StorageError("checksum does not match the file")
+            self.client.put_object(Bucket=self.bucket, Key=key, Body=b"")
+            if on_progress is not None:
+                on_progress(0)
+            return
+        upload = self.client.create_multipart_upload(Bucket=self.bucket, Key=key)
+        upload_id = upload["UploadId"]
+        parts = []
+        sent = 0
+        hasher = hashlib.sha256()
+        try:
+            with path.open("rb") as handle:
+                for number, length in enumerate(part_lengths(plan), start=1):
+                    blob = handle.read(length)
+                    if len(blob) != length:
+                        raise StorageError("short read")
+                    hasher.update(blob)
+                    response = self.client.upload_part(
+                        Bucket=self.bucket,
+                        Key=key,
+                        UploadId=upload_id,
+                        PartNumber=number,
+                        Body=blob,
+                    )
+                    parts.append({"ETag": response["ETag"], "PartNumber": number})
+                    sent += len(blob)
+                    if on_progress is not None:
+                        on_progress(sent)
+            if hasher.hexdigest() != checksum:
+                raise StorageError("checksum does not match the file")
+            self.client.complete_multipart_upload(
+                Bucket=self.bucket,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={"Parts": parts},
+            )
+        except Exception:
+            self.client.abort_multipart_upload(Bucket=self.bucket, Key=key, UploadId=upload_id)
+            raise
+
+    def get(self, key: str, path: Path) -> None:
+        parsed = parse_object_key(key)
+        path = Path(path)
+        if path.is_symlink():
+            raise StorageError("destination is a symlink")
+        if not path.parent.is_dir():
+            raise StorageError("destination directory is missing")
+        partial = path.with_name(f".{path.name}.partial")
+        hasher = hashlib.sha256()
+        try:
+            body = self.client.get_object(Bucket=self.bucket, Key=key)["Body"]
+            with partial.open("wb") as handle:
+                while True:
+                    chunk = body.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    handle.write(chunk)
+                    hasher.update(chunk)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if hasher.hexdigest() != parsed.checksum:
+                raise StorageError("checksum does not match the stored object")
+            os.chmod(partial, 0o600)
+            os.replace(partial, path)
+        except Exception:
+            partial.unlink(missing_ok=True)
+            raise
+
+    def list(self, prefix: str = "") -> list[StoredObject]:
+        found = []
+        paginator = self.client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+            for item in page.get("Contents", []):
+                key = item["Key"]
+                try:
+                    parsed = parse_object_key(key)
+                except StorageError:
+                    continue
+                found.append(StoredObject(key=key, size=item["Size"], checksum=parsed.checksum))
+        found.sort(key=lambda item: item.key)
+        return found
+
+    def delete(self, key: str) -> None:
+        self.client.delete_object(Bucket=self.bucket, Key=key)
