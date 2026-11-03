@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from kopi.identity import IDENTITY_FILENAME, Identity, _cli_env
+from kopi.pdeath import popen_kwargs
 
 BUFFER_SIZE = 1024 * 1024
 
@@ -286,6 +287,7 @@ def _gnu_tar() -> str:
             capture_output=True,
             env=_cli_env(),
             check=False,
+            **popen_kwargs(),
         )
         if result.returncode == 0 and result.stdout.startswith(b"tar (GNU tar)"):
             _GNU_TAR = path
@@ -472,7 +474,7 @@ def _popen(argv: list[str], *, tmpdir: Path | None = None, **kwargs) -> subproce
     if tmpdir is not None:
         env["TMPDIR"] = os.fspath(tmpdir)
     try:
-        return subprocess.Popen(argv, env=env, bufsize=0, **kwargs)
+        return subprocess.Popen(argv, env=env, bufsize=0, **popen_kwargs(), **kwargs)
     except FileNotFoundError as exc:
         raise PipelineError(f"{argv[0]} is not installed") from exc
 

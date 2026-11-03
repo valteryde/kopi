@@ -514,6 +514,12 @@ def _():
             _wait(lambda: _refresh(run).phase == Run.Phase.ARCHIVE)
             assert pre_flag.is_file()
             assert not post_flag.exists()
+            # One signal to the session, so the child cannot record the tool
+            # deaths as an ordinary archive failure before it dies.
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             _kill_tree(proc.pid)
             proc.wait(timeout=5)
         finally:

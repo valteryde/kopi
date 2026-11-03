@@ -15,8 +15,9 @@ from pathlib import Path
 from django.db import transaction
 from django.utils import timezone
 
-from kopi.identity import Identity, decrypt_secret
+from kopi.identity import IDENTITY_FILENAME, Identity, decrypt_secret, load_identity
 from kopi.models import Run, Source
+from kopi.pdeath import popen_kwargs, watch_parent
 from kopi.pipeline import (
     Marker,
     PipelineError,
@@ -26,7 +27,8 @@ from kopi.pipeline import (
     start_folder_producer,
 )
 from kopi.postgres import archive_database
-from kopi.storage import StorageError, object_key
+from kopi.settings import data_directory, work_directory
+from kopi.storage import S3Storage, StorageError, object_key
 
 LOG_CAP = 1024 * 1024
 STALL_INTERVAL = 15 * 60
@@ -164,6 +166,32 @@ class _Log:
             return bytes(self._buf).decode("utf-8", "replace")
 
 
+def run_supervised(run_id: int) -> None:
+    """One run, in this process, armed so a dead worker kills the tools."""
+    watch_parent()
+    identity = load_identity(data_directory() / IDENTITY_FILENAME)
+    run = _load(run_id)
+    execute(
+        run_id,
+        identity=identity,
+        storage=_storage(run.link.target, identity),
+        work_dir=work_directory(),
+    )
+
+
+def _storage(target, identity: Identity) -> S3Storage:
+    access = decrypt_secret(identity, target.access_key_id) if target.access_key_id else ""
+    secret = decrypt_secret(identity, target.secret_access_key) if target.secret_access_key else ""
+    return S3Storage(
+        bucket=target.bucket,
+        endpoint_url=target.endpoint_url,
+        region=target.region or "garage",
+        access_key_id=access,
+        secret_access_key=secret,
+        path_style=target.path_style,
+    )
+
+
 def execute(
     run_id: int,
     *,
@@ -268,6 +296,28 @@ def reconcile(
     )
 
 
+def reconcile_open(run_ids: list[int]) -> None:
+    """Reconcile running rows in this process, using the host identity and S3."""
+    pending = [
+        run_id
+        for run_id in run_ids
+        if Run.objects.filter(pk=run_id, status=Run.Status.RUNNING).exists()
+    ]
+    if not pending:
+        return
+    identity = load_identity(data_directory() / IDENTITY_FILENAME)
+    for run_id in pending:
+        run = _load(run_id)
+        if run.status != Run.Status.RUNNING:
+            continue
+        reconcile(
+            run_id,
+            identity=identity,
+            storage=_storage(run.link.target, identity),
+            work_dir=work_directory(),
+        )
+
+
 def run_hook(path_str: str, timeout: int, run_id: int, log: _Log) -> None:
     if not path_str or not str(path_str).strip():
         return
@@ -280,6 +330,7 @@ def run_hook(path_str: str, timeout: int, run_id: int, log: _Log) -> None:
         stderr=subprocess.PIPE,
         env=hook_env(run_id),
         process_group=0,
+        **popen_kwargs(),
     )
     captured = [bytearray(), bytearray()]
 

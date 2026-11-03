@@ -33,6 +33,9 @@ def data_directory():
 
 def work_directory():
     """Ciphertext staged for upload. Development keeps it at ./devdata/work."""
+    override = os.environ.get("KOPI_WORK_DIR")
+    if override:
+        return Path(override)
     return BASE_DIR / "devdata" / "work"
 
 

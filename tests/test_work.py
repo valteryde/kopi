@@ -141,7 +141,8 @@ def _():
     try:
         def claimed():
             connection.close()
-            return Run.objects.filter(link=link, status=Run.Status.RUNNING).exists()
+            run = Run.objects.filter(link=link).first()
+            return run is not None and run.started_at is not None
 
         _wait(claimed, worker)
         assert worker.proc.poll() is None

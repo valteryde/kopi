@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 
 from kopi.identity import Identity, _cli_env
+from kopi.pdeath import popen_kwargs
 from kopi.pipeline import Marker, PipelineError, Producer, archive, read_marker
 
 
@@ -99,6 +100,7 @@ def start_dump(
         stderr=subprocess.DEVNULL,
         env=env,
         bufsize=0,
+        **popen_kwargs(),
     )
     return Producer([process])
 
@@ -188,6 +190,7 @@ def restore_database(
             stderr=subprocess.DEVNULL,
             env=env,
             bufsize=0,
+            **popen_kwargs(),
         )
         processes.append(age)
         assert age.stdout is not None
@@ -200,6 +203,7 @@ def restore_database(
                 database=database,
             ),
             stdin=age.stdout,
+            **popen_kwargs(),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             env=env,

@@ -97,12 +97,15 @@ def _transform(argv: list[str], payload: bytes) -> bytes:
 
 def _run_cli(argv: list[str], payload: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
     try:
+        from kopi.pdeath import popen_kwargs
+
         return subprocess.run(
             argv,
             input=payload,
             capture_output=True,
             env=_cli_env(),
             check=False,
+            **popen_kwargs(),
         )
     except FileNotFoundError as exc:
         raise IdentityError("age is not installed") from exc
