@@ -1,16 +1,8 @@
 import os
-import tempfile
 from pathlib import Path
 
-# Point Django at a throwaway directory before settings are imported, so a test
-# run does not migrate the development database under devdata/data.
-_TMP = tempfile.TemporaryDirectory(prefix="kopi-models-")
-os.environ["KOPI_DATA_DIR"] = _TMP.name
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kopi.settings")
-
-import django
-
-django.setup()
+import tests.bootstrap  # noqa: F401  — sets the throwaway data dir before Django starts
+from tests.bootstrap import DATA_DIR
 
 from django.core.management import call_command
 from django.db import IntegrityError, connection
@@ -111,7 +103,7 @@ def _():
         timeout_ms = cursor.fetchone()[0]
     assert mode.lower() == "wal"
     assert timeout_ms == SQLITE_BUSY_TIMEOUT * 1000
-    assert Path(connection.settings_dict["NAME"]).is_relative_to(Path(_TMP.name))
+    assert Path(connection.settings_dict["NAME"]).is_relative_to(DATA_DIR)
 
 
 @test("a folder source needs a root path and retention fields have to match the kind")
@@ -139,7 +131,7 @@ def _():
 @test("credential columns store age ciphertext")
 def _():
     call_command("migrate", verbosity=0, interactive=False)
-    identity = generate_identity(Path(_TMP.name) / "secret.key")
+    identity = generate_identity(DATA_DIR / "secret.key")
     source = Source.objects.create(
         name="prod",
         kind=Source.Kind.POSTGRES,

@@ -72,18 +72,19 @@ def marker_path(ciphertext: Path) -> Path:
     return ciphertext.with_name(ciphertext.name + ".marker")
 
 
-def start_folder_producer(root: Path) -> Producer:
+def start_folder_producer(root: Path, *, tmpdir: Path | None = None) -> Producer:
     """GNU tar, posix format, into single-threaded zstd. Symlinks stay symlinks."""
     root = Path(root)
     if root.is_symlink() or not root.is_dir():
         raise PipelineError("folder source is not a directory")
-    tar = _popen(_tar_create(root), stdout=subprocess.PIPE)
+    tar = _popen(_tar_create(root), stdout=subprocess.PIPE, tmpdir=tmpdir)
     try:
         assert tar.stdout is not None
         zstd = _popen(
             ["zstd", "--stdout", "--quiet", "--single-thread"],
             stdin=tar.stdout,
             stdout=subprocess.PIPE,
+            tmpdir=tmpdir,
         )
     except Exception:
         tar.kill()
@@ -93,11 +94,34 @@ def start_folder_producer(root: Path) -> Producer:
     return Producer([tar, zstd])
 
 
-def archive_folder(root: Path, identity: Identity, ciphertext: Path, run_id: str) -> Marker:
-    return archive(start_folder_producer(root), identity, ciphertext, run_id)
+def archive_folder(
+    root: Path,
+    identity: Identity,
+    ciphertext: Path,
+    run_id: str,
+    *,
+    on_bytes=None,
+    tmpdir: Path | None = None,
+) -> Marker:
+    return archive(
+        start_folder_producer(root, tmpdir=tmpdir),
+        identity,
+        ciphertext,
+        run_id,
+        on_bytes=on_bytes,
+        tmpdir=tmpdir,
+    )
 
 
-def archive(producer: Producer, identity: Identity, ciphertext: Path, run_id: str) -> Marker:
+def archive(
+    producer: Producer,
+    identity: Identity,
+    ciphertext: Path,
+    run_id: str,
+    *,
+    on_bytes=None,
+    tmpdir: Path | None = None,
+) -> Marker:
     """Copy `producer` into age. Write the marker only when that finishes cleanly."""
     try:
         if not isinstance(run_id, str) or run_id == "":
@@ -110,6 +134,7 @@ def archive(producer: Producer, identity: Identity, ciphertext: Path, run_id: st
             ["age", "--encrypt", "--recipient", identity.recipient],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
+            tmpdir=tmpdir,
         )
     except Exception:
         _discard(producer)
@@ -130,7 +155,7 @@ def archive(producer: Producer, identity: Identity, ciphertext: Path, run_id: st
         thread.start()
         try:
             assert age.stdin is not None
-            _copy_into(producer.stdout, age.stdin)
+            _copy_into(producer.stdout, age.stdin, on_bytes)
         except Exception as exc:
             errors.append(exc)
         finally:
@@ -268,10 +293,11 @@ def _gnu_tar() -> str:
     raise PipelineError("GNU tar is not installed")
 
 
-def _copy_into(source, sink) -> None:
+def _copy_into(source, sink, on_bytes=None) -> None:
     """Copy `source` into age's stdin. The buffer is reused and not retained."""
     buf = bytearray(BUFFER_SIZE)
     view = memoryview(buf)
+    total = 0
     while True:
         count = source.readinto(buf)
         if count is None:
@@ -279,6 +305,9 @@ def _copy_into(source, sink) -> None:
         if count == 0:
             return
         _write_stream(sink, view[:count])
+        total += count
+        if on_bytes is not None:
+            on_bytes(total)
 
 
 def _pump_ciphertext(
@@ -428,9 +457,22 @@ def _discard(producer: Producer) -> None:
     producer.wait()
 
 
-def _popen(argv: list[str], **kwargs) -> subprocess.Popen[bytes]:
+def read_marker(ciphertext: Path) -> Marker | None:
+    """Return the marker when its size and hash match the ciphertext."""
     try:
-        return subprocess.Popen(argv, env=_cli_env(), bufsize=0, **kwargs)
+        marker = _load_marker(ciphertext)
+        _verify_ciphertext(ciphertext, marker)
+    except PipelineError:
+        return None
+    return marker
+
+
+def _popen(argv: list[str], *, tmpdir: Path | None = None, **kwargs) -> subprocess.Popen[bytes]:
+    env = _cli_env()
+    if tmpdir is not None:
+        env["TMPDIR"] = os.fspath(tmpdir)
+    try:
+        return subprocess.Popen(argv, env=env, bufsize=0, **kwargs)
     except FileNotFoundError as exc:
         raise PipelineError(f"{argv[0]} is not installed") from exc
 
