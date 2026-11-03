@@ -107,15 +107,6 @@ button:disabled { cursor: default; }
     border-top: 1px solid #2c2c2c;
 }
 
-.keyline {
-    margin: 0 8px 12px;
-    font-size: 11.5px;
-    color: #bdbdbd;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .who {
     display: flex;
     align-items: center;
