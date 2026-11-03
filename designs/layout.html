@@ -3,69 +3,1041 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOCKUP LAYOUT | KOPI</title>
+    <title>Kopi</title>
+    <link rel="icon" href="../icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/phosphor/phosphor.css">
 
-    <style>
-
-        :root {
-            --sidebar-width: 300px
-        }
-
-
-        #sidebar {
-            position: absolute;
-            padding:10px;
-            box-sizing: border-box;
-            left: 0;
-            top:0;
-            width: var(--sidebar-width);
-            background-color: red;
-            height:100vh;
-        }
-
-        #main {
-            position: absolute;
-            left: var(--sidebar-width);
-            top:0;
-        }
-
-        #sidebar-icon {
-            position: relative;
-            top: 0;
-            left: 0;
-            width: 50px;
-        }
-
-
-    </style>
-
-
-    <script>
-
-
-
-    </script>
-
-
-
+    <link rel="stylesheet" href="rigid.css">
 </head>
 <body>
-    
+    <div id="app">
+        <div id="sidebar">
+            <div id="brand">
+                <img src="../icon.png" id="sidebar-icon" alt="">
+                <div id="brand-name">Kopi</div>
+            </div>
 
-    <div id="sidebar">
+            <div id="sidebar-inner">
+                <button type="button" class="navbtn is-on" data-go="runs" aria-current="page">
+                    <i class="ph ph-clock-counter-clockwise"></i>
+                    <span>Runs</span>
+                    <span class="navcount">1</span>
+                </button>
+                <button type="button" class="navbtn" data-go="sources">
+                    <i class="ph ph-database"></i>
+                    <span>Sources</span>
+                </button>
+                <button type="button" class="navbtn" data-go="targets">
+                    <i class="ph ph-cloud"></i>
+                    <span>Targets</span>
+                </button>
+                <button type="button" class="navbtn" data-go="links">
+                    <i class="ph ph-link"></i>
+                    <span>Links</span>
+                </button>
+                <button type="button" class="navbtn" data-go="mail">
+                    <i class="ph ph-envelope"></i>
+                    <span>Mail</span>
+                </button>
+                <button type="button" class="navbtn" data-go="audit">
+                    <i class="ph ph-scroll"></i>
+                    <span>Audit</span>
+                </button>
+                <button type="button" class="navbtn" data-go="users">
+                    <i class="ph ph-users"></i>
+                    <span>Users</span>
+                </button>
+            </div>
 
-        <img src="../icon.png" id="sidebar-icon">
+            <div id="sidebar-foot">
+                <p class="keyline"><i class="ph ph-key"></i> secret.key is on the data volume</p>
+                <div class="who">
+                    <i class="ph ph-user"></i>
+                    <div>
+                        <strong>Ada Holm</strong>
+                        <span><i class="ph ph-shield-check"></i> Admin</span>
+                    </div>
+                    <button type="button" id="sign-out" aria-label="Sign out"><i class="ph ph-sign-out"></i></button>
+                </div>
+            </div>
+        </div>
 
+        <div id="main">
+            <section data-screen="runs">
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-clock-counter-clockwise"></i> Runs</h1>
+                        <p class="lede">One run is encrypting. The figure is the megabytes that phase has moved.</p>
+                    </div>
+                    <div class="head-actions">
+                        <label class="search">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input id="find-runs" type="search" placeholder="Search runs" aria-label="Search runs">
+                        </label>
+                    </div>
+                </header>
+
+                <p class="action-note" id="action-note" hidden></p>
+
+                <div class="layout">
+                    <article class="panel live span-2">
+                        <div class="live-top">
+                            <div>
+                                <div class="kicker"><i class="ph ph-circle-notch spin"></i> Encrypting</div>
+                                <div class="live-link">
+                                    <i class="ph ph-folder"></i>
+                                    <strong>uploads</strong>
+                                    <i class="ph ph-arrow-right"></i>
+                                    <i class="ph ph-cloud"></i>
+                                    <strong>kopi-eu</strong>
+                                </div>
+                                <div class="live-meta">
+                                    <span><i class="ph ph-lightning"></i> Run now</span>
+                                    <span><i class="ph ph-clock"></i> Started 3 Nov 17:02</span>
+                                    <span><i class="ph ph-stack"></i> Slot 1 of 1</span>
+                                    <span><i class="ph ph-globe"></i> Europe/Copenhagen</span>
+                                </div>
+                            </div>
+                            <div class="live-num">
+                                <div><strong data-mb>4,812.4</strong><em>MB</em></div>
+                                <div class="cap"><i class="ph ph-lock"></i> Moved while encrypting</div>
+                            </div>
+                        </div>
+                        <div class="phases" aria-label="Phases">
+                            <div class="phase done"><i class="ph ph-terminal-window"></i> Pre</div>
+                            <div class="phase done"><i class="ph ph-archive"></i> Archive</div>
+                            <div class="phase now"><i class="ph ph-lock"></i> Encrypt</div>
+                            <div class="phase"><i class="ph ph-cloud-arrow-up"></i> Upload</div>
+                            <div class="phase"><i class="ph ph-file-code"></i> Post</div>
+                            <div class="phase"><i class="ph ph-clock-countdown"></i> Retain</div>
+                        </div>
+                    </article>
+
+                    <div class="panel">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th><i class="ph ph-clock"></i> When</th>
+                                    <th><i class="ph ph-link"></i> Link</th>
+                                    <th class="num"><i class="ph ph-hard-drive"></i> Size</th>
+                                    <th><i class="ph ph-pulse"></i> Result</th>
+                                    <th aria-label="Restore"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="run-rows">
+                                <tr data-pick="run" data-id="uploads" class="is-on" tabindex="0">
+                                    <td>3 Nov 17:02</td>
+                                    <td>
+                                        <span class="cell-link"><i class="ph ph-folder"></i> uploads <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> kopi-eu</span>
+                                    </td>
+                                    <td class="num"><span data-mb>4,812.4</span> MB</td>
+                                    <td class="run"><i class="ph ph-circle-notch spin"></i> Encrypting</td>
+                                    <td></td>
+                                </tr>
+                                <tr data-pick="run" data-id="billing" tabindex="0">
+                                    <td>3 Nov 02:14</td>
+                                    <td>
+                                        <span class="cell-link"><i class="ph ph-database"></i> billing-db <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> kopi-eu</span>
+                                    </td>
+                                    <td class="num">842 MB</td>
+                                    <td class="ok"><i class="ph ph-check"></i> Succeeded</td>
+                                    <td>
+                                        <button type="button" class="btn small" data-open-restore data-kind="database" data-name="billing-db" data-object="billing-db/2026-11-03T011402Z-a91c0d44.dump.age" data-size="842 MB" data-sum="sha256 a91c0d44…e17b" data-dest="billing_restore">
+                                            <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr data-pick="run" data-id="ledger" tabindex="0">
+                                    <td>2 Nov 03:40</td>
+                                    <td>
+                                        <span class="cell-link"><i class="ph ph-database"></i> ledger <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> kopi-archive</span>
+                                    </td>
+                                    <td class="num">6.1 GB</td>
+                                    <td class="bad"><i class="ph ph-x"></i> Failed</td>
+                                    <td>
+                                        <button type="button" class="btn small" data-open-restore data-kind="database" data-name="ledger" data-object="ledger/2026-11-02T024011Z-b10e77aa.dump.age" data-size="6.1 GB" data-sum="sha256 b10e77aa…c90d" data-dest="ledger_restore">
+                                            <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr data-pick="run" data-id="invoices" tabindex="0">
+                                    <td>2 Nov 02:02</td>
+                                    <td>
+                                        <span class="cell-link"><i class="ph ph-folder"></i> invoices <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> kopi-archive</span>
+                                    </td>
+                                    <td class="num">12.4 GB</td>
+                                    <td class="ok"><i class="ph ph-check"></i> Succeeded</td>
+                                    <td>
+                                        <button type="button" class="btn small" data-open-restore data-kind="folder" data-name="invoices" data-object="invoices/2026-11-02T010214Z-c44aa091.tar.zst.age" data-size="12.4 GB" data-sum="sha256 c44aa091…11fe" data-dest="/restore/invoices">
+                                            <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr data-pick="run" data-id="billing-old" tabindex="0">
+                                    <td>1 Nov 02:14</td>
+                                    <td>
+                                        <span class="cell-link"><i class="ph ph-database"></i> billing-db <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> kopi-eu</span>
+                                    </td>
+                                    <td class="num">839 MB</td>
+                                    <td class="ok"><i class="ph ph-check"></i> Succeeded</td>
+                                    <td>
+                                        <button type="button" class="btn small" data-open-restore data-kind="database" data-name="billing-db" data-object="billing-db/2026-11-01T011400Z-88ab12cd.dump.age" data-size="839 MB" data-sum="sha256 88ab12cd…04aa" data-dest="billing_restore">
+                                            <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="empty" data-empty="run" hidden><i class="ph ph-magnifying-glass"></i> No runs match.</p>
+                    </div>
+
+                    <div class="panel inspect">
+                        <div class="detail" data-detail="run" data-id="uploads">
+                            <h2><i class="ph ph-folder"></i> uploads</h2>
+                            <div class="kv"><i class="ph ph-lock"></i><div class="k">Phase</div><div class="v run">Encrypting</div></div>
+                            <div class="kv"><i class="ph ph-lightning"></i><div class="k">How it started</div><div class="v">Run now, while the slot was free</div></div>
+                            <div class="kv"><i class="ph ph-file-lock"></i><div class="k">Work file</div><div class="v mono">/work/uploads-20261103T160200Z.tar.zst.age</div></div>
+                            <div class="kv"><i class="ph ph-eye-slash"></i><div class="k">Marker</div><div class="v">Not written yet. The upload waits for it.</div></div>
+                            <div class="group">
+                                <div class="group-label">Log</div>
+                                <div class="log">pre  /hooks/uploads-freeze.sh
+exit 0
+tar  posix  /srv/uploads
+zstd
+age  writing ciphertext
+mode 0600</div>
+                            </div>
+                            <p class="hint"><i class="ph ph-info"></i> Restore stays closed until the upload finishes.</p>
+                        </div>
+
+                        <div class="detail" data-detail="run" data-id="billing" hidden>
+                            <h2><i class="ph ph-database"></i> billing-db</h2>
+                            <div class="kv"><i class="ph ph-check"></i><div class="k">Result</div><div class="v ok">Succeeded</div></div>
+                            <div class="kv"><i class="ph ph-clock"></i><div class="k">Finished</div><div class="v">3 Nov 02:14</div></div>
+                            <div class="kv"><i class="ph ph-hard-drive"></i><div class="k">Size</div><div class="v">842 MB</div></div>
+                            <div class="kv"><i class="ph ph-fingerprint"></i><div class="k">Checksum</div><div class="v mono">sha256 a91c0d44…e17b</div></div>
+                            <div class="kv"><i class="ph ph-file-lock"></i><div class="k">Object</div><div class="v mono">billing-db/2026-11-03T011402Z-a91c0d44.dump.age</div></div>
+                            <div class="kv"><i class="ph ph-cloud"></i><div class="k">Target</div><div class="v">kopi-eu</div></div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-open-restore data-kind="database" data-name="billing-db" data-object="billing-db/2026-11-03T011402Z-a91c0d44.dump.age" data-size="842 MB" data-sum="sha256 a91c0d44…e17b" data-dest="billing_restore">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="detail" data-detail="run" data-id="ledger" hidden>
+                            <h2><i class="ph ph-database"></i> ledger</h2>
+                            <div class="kv"><i class="ph ph-x"></i><div class="k">Result</div><div class="v bad">Failed</div></div>
+                            <div class="kv"><i class="ph ph-timer"></i><div class="k">Why</div><div class="v">Post script timed out at 600s</div></div>
+                            <div class="kv"><i class="ph ph-cloud-check"></i><div class="k">Upload</div><div class="v">Kept. 6.1 GB is in kopi-archive.</div></div>
+                            <div class="kv"><i class="ph ph-envelope"></i><div class="k">Mail</div><div class="v">Failure mail sent</div></div>
+                            <div class="kv"><i class="ph ph-fingerprint"></i><div class="k">Checksum</div><div class="v mono">sha256 b10e77aa…c90d</div></div>
+                            <div class="kv"><i class="ph ph-file-lock"></i><div class="k">Object</div><div class="v mono">ledger/2026-11-02T024011Z-b10e77aa.dump.age</div></div>
+                            <p class="hint"><i class="ph ph-info"></i> The run is failed. The ciphertext is still there to restore.</p>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-open-restore data-kind="database" data-name="ledger" data-object="ledger/2026-11-02T024011Z-b10e77aa.dump.age" data-size="6.1 GB" data-sum="sha256 b10e77aa…c90d" data-dest="ledger_restore">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="detail" data-detail="run" data-id="invoices" hidden>
+                            <h2><i class="ph ph-folder"></i> invoices</h2>
+                            <div class="kv"><i class="ph ph-check"></i><div class="k">Result</div><div class="v ok">Succeeded</div></div>
+                            <div class="kv"><i class="ph ph-clock"></i><div class="k">Finished</div><div class="v">2 Nov 02:02</div></div>
+                            <div class="kv"><i class="ph ph-hard-drive"></i><div class="k">Size</div><div class="v">12.4 GB</div></div>
+                            <div class="kv"><i class="ph ph-fingerprint"></i><div class="k">Checksum</div><div class="v mono">sha256 c44aa091…11fe</div></div>
+                            <div class="kv"><i class="ph ph-file-lock"></i><div class="k">Object</div><div class="v mono">invoices/2026-11-02T010214Z-c44aa091.tar.zst.age</div></div>
+                            <div class="kv"><i class="ph ph-cloud"></i><div class="k">Target</div><div class="v">kopi-archive</div></div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-open-restore data-kind="folder" data-name="invoices" data-object="invoices/2026-11-02T010214Z-c44aa091.tar.zst.age" data-size="12.4 GB" data-sum="sha256 c44aa091…11fe" data-dest="/restore/invoices">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="detail" data-detail="run" data-id="billing-old" hidden>
+                            <h2><i class="ph ph-database"></i> billing-db</h2>
+                            <div class="kv"><i class="ph ph-check"></i><div class="k">Result</div><div class="v ok">Succeeded</div></div>
+                            <div class="kv"><i class="ph ph-clock"></i><div class="k">Finished</div><div class="v">1 Nov 02:14</div></div>
+                            <div class="kv"><i class="ph ph-hard-drive"></i><div class="k">Size</div><div class="v">839 MB</div></div>
+                            <div class="kv"><i class="ph ph-fingerprint"></i><div class="k">Checksum</div><div class="v mono">sha256 88ab12cd…04aa</div></div>
+                            <div class="kv"><i class="ph ph-file-lock"></i><div class="k">Object</div><div class="v mono">billing-db/2026-11-01T011400Z-88ab12cd.dump.age</div></div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-open-restore data-kind="database" data-name="billing-db" data-object="billing-db/2026-11-01T011400Z-88ab12cd.dump.age" data-size="839 MB" data-sum="sha256 88ab12cd…04aa" data-dest="billing_restore">
+                                    <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section data-screen="sources" hidden>
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-database"></i> Sources</h1>
+                        <p class="lede">A source is one Postgres database or one folder tree.</p>
+                    </div>
+                    <div class="head-actions">
+                        <label class="search">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input id="find-sources" type="search" placeholder="Search sources" aria-label="Search sources">
+                        </label>
+                        <button type="button" class="btn" data-new="source"><i class="ph ph-plus"></i> New source</button>
+                    </div>
+                </header>
+                <div class="layout">
+                    <div class="panel" id="source-rows">
+                        <button type="button" class="pick is-on" data-pick="source" data-id="billing">
+                            <span class="pick-main"><i class="ph ph-database"></i> <strong>billing-db</strong></span>
+                            <span class="pick-sub"><i class="ph ph-hard-drives"></i> Postgres 16 · db.internal</span>
+                        </button>
+                        <button type="button" class="pick" data-pick="source" data-id="ledger">
+                            <span class="pick-main"><i class="ph ph-database"></i> <strong>ledger</strong></span>
+                            <span class="pick-sub"><i class="ph ph-hard-drives"></i> Postgres 18 · db.internal</span>
+                        </button>
+                        <button type="button" class="pick" data-pick="source" data-id="uploads">
+                            <span class="pick-main"><i class="ph ph-folder"></i> <strong>uploads</strong></span>
+                            <span class="pick-sub"><i class="ph ph-folder-open"></i> /srv/uploads</span>
+                        </button>
+                        <button type="button" class="pick" data-pick="source" data-id="invoices">
+                            <span class="pick-main"><i class="ph ph-folder"></i> <strong>invoices</strong></span>
+                            <span class="pick-sub"><i class="ph ph-folder-open"></i> /var/lib/invoices</span>
+                        </button>
+                        <p class="empty" data-empty="source" hidden><i class="ph ph-magnifying-glass"></i> No sources match.</p>
+                    </div>
+                    <div class="panel inspect">
+                        <div class="detail" data-detail="source" data-id="billing">
+                            <h2><i class="ph ph-database"></i> billing-db</h2>
+                            <div class="kv"><i class="ph ph-database"></i><div class="k">Kind</div><div class="v">Postgres</div></div>
+                            <div class="kv"><i class="ph ph-globe"></i><div class="k">Host</div><div class="v mono">db.internal</div></div>
+                            <div class="kv"><i class="ph ph-plugs"></i><div class="k">Port</div><div class="v">5432</div></div>
+                            <div class="kv"><i class="ph ph-table"></i><div class="k">Database</div><div class="v">billing</div></div>
+                            <div class="kv"><i class="ph ph-user"></i><div class="k">User</div><div class="v">kopi</div></div>
+                            <div class="kv"><i class="ph ph-lock-key"></i><div class="k">Password</div><div class="v"><i class="ph ph-check"></i> Set. Not shown.</div></div>
+                            <div class="kv"><i class="ph ph-terminal-window"></i><div class="k">Dump binary</div><div class="v mono">pg_dump 16</div></div>
+                            <p class="hint"><i class="ph ph-info"></i> The backup is a logical dump, one database.</p>
+                        </div>
+                        <div class="detail" data-detail="source" data-id="ledger" hidden>
+                            <h2><i class="ph ph-database"></i> ledger</h2>
+                            <div class="kv"><i class="ph ph-database"></i><div class="k">Kind</div><div class="v">Postgres</div></div>
+                            <div class="kv"><i class="ph ph-globe"></i><div class="k">Host</div><div class="v mono">db.internal</div></div>
+                            <div class="kv"><i class="ph ph-plugs"></i><div class="k">Port</div><div class="v">5432</div></div>
+                            <div class="kv"><i class="ph ph-table"></i><div class="k">Database</div><div class="v">ledger</div></div>
+                            <div class="kv"><i class="ph ph-user"></i><div class="k">User</div><div class="v">kopi</div></div>
+                            <div class="kv"><i class="ph ph-lock-key"></i><div class="k">Password</div><div class="v"><i class="ph ph-check"></i> Set. Not shown.</div></div>
+                            <div class="kv"><i class="ph ph-terminal-window"></i><div class="k">Dump binary</div><div class="v mono">pg_dump 18</div></div>
+                        </div>
+                        <div class="detail" data-detail="source" data-id="uploads" hidden>
+                            <h2><i class="ph ph-folder"></i> uploads</h2>
+                            <div class="kv"><i class="ph ph-folder"></i><div class="k">Kind</div><div class="v">Folder</div></div>
+                            <div class="kv"><i class="ph ph-folder-open"></i><div class="k">Root</div><div class="v mono">/srv/uploads</div></div>
+                            <div class="kv"><i class="ph ph-plus"></i><div class="k">Include</div><div class="v">Everything under the root</div></div>
+                            <div class="kv"><i class="ph ph-minus"></i><div class="k">Exclude</div><div class="v mono">*.tmp</div></div>
+                            <p class="hint"><i class="ph ph-key"></i> secret.key is skipped if this tree would include it. Symlinks are stored as symlinks.</p>
+                        </div>
+                        <div class="detail" data-detail="source" data-id="invoices" hidden>
+                            <h2><i class="ph ph-folder"></i> invoices</h2>
+                            <div class="kv"><i class="ph ph-folder"></i><div class="k">Kind</div><div class="v">Folder</div></div>
+                            <div class="kv"><i class="ph ph-folder-open"></i><div class="k">Root</div><div class="v mono">/var/lib/invoices</div></div>
+                            <div class="kv"><i class="ph ph-plus"></i><div class="k">Include</div><div class="v">Everything under the root</div></div>
+                            <div class="kv"><i class="ph ph-minus"></i><div class="k">Exclude</div><div class="v">None</div></div>
+                            <p class="hint"><i class="ph ph-archive"></i> Each run is a full archive, permissions kept, compressed with zstd.</p>
+                        </div>
+                        <div class="detail" data-detail="source" data-id="new" hidden>
+                            <h2><i class="ph ph-plus"></i> New source</h2>
+                            <div class="seg">
+                                <button type="button" class="is-on" data-kind="postgres"><i class="ph ph-database"></i> Postgres</button>
+                                <button type="button" data-kind="folder"><i class="ph ph-folder"></i> Folder</button>
+                            </div>
+                            <div data-kind-panel="postgres">
+                                <label class="stack"><span><i class="ph ph-tag"></i> Name</span><input type="text" value="" placeholder="billing-db"></label>
+                                <label class="stack"><span><i class="ph ph-globe"></i> Host</span><input type="text" placeholder="db.internal"></label>
+                                <label class="stack"><span><i class="ph ph-plugs"></i> Port</span><input type="text" value="5432"></label>
+                                <label class="stack"><span><i class="ph ph-table"></i> Database</span><input type="text" placeholder="billing"></label>
+                                <label class="stack"><span><i class="ph ph-user"></i> User</span><input type="text" placeholder="kopi"></label>
+                                <label class="stack"><span><i class="ph ph-lock-key"></i> Password</span><input type="password" value="" placeholder="Stored as ciphertext"></label>
+                                <label class="stack"><span><i class="ph ph-terminal-window"></i> Dump binary</span>
+                                    <select>
+                                        <option>pg_dump 16</option>
+                                        <option>pg_dump 17</option>
+                                        <option>pg_dump 18</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div data-kind-panel="folder" hidden>
+                                <label class="stack"><span><i class="ph ph-tag"></i> Name</span><input type="text" placeholder="uploads"></label>
+                                <label class="stack"><span><i class="ph ph-folder-open"></i> Root path</span><input type="text" placeholder="/srv/uploads"></label>
+                                <label class="stack"><span><i class="ph ph-plus"></i> Include</span><input type="text" placeholder="Empty includes the whole tree"></label>
+                                <label class="stack"><span><i class="ph ph-minus"></i> Exclude</span><input type="text" placeholder="*.tmp"></label>
+                                <p class="hint"><i class="ph ph-key"></i> A path is a path inside the container. secret.key is never part of a backup.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section data-screen="targets" hidden>
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-cloud"></i> Targets</h1>
+                        <p class="lede">A target is an S3 bucket. The object payload is ciphertext.</p>
+                    </div>
+                    <div class="head-actions">
+                        <label class="search">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input id="find-targets" type="search" placeholder="Search targets" aria-label="Search targets">
+                        </label>
+                        <button type="button" class="btn" data-new="target"><i class="ph ph-plus"></i> New target</button>
+                    </div>
+                </header>
+                <div class="layout">
+                    <div class="panel" id="target-rows">
+                        <button type="button" class="pick is-on" data-pick="target" data-id="eu">
+                            <span class="pick-main"><i class="ph ph-cloud"></i> <strong>kopi-eu</strong></span>
+                            <span class="pick-sub"><i class="ph ph-globe"></i> eu-central-1 · kopi-eu</span>
+                        </button>
+                        <button type="button" class="pick" data-pick="target" data-id="archive">
+                            <span class="pick-main"><i class="ph ph-cloud"></i> <strong>kopi-archive</strong></span>
+                            <span class="pick-sub"><i class="ph ph-hard-drives"></i> 127.0.0.1:3900 · path-style</span>
+                        </button>
+                        <p class="empty" data-empty="target" hidden><i class="ph ph-magnifying-glass"></i> No targets match.</p>
+                    </div>
+                    <div class="panel inspect">
+                        <div class="detail" data-detail="target" data-id="eu">
+                            <h2><i class="ph ph-cloud"></i> kopi-eu</h2>
+                            <div class="kv"><i class="ph ph-globe"></i><div class="k">Endpoint</div><div class="v mono">s3.eu-central-1.amazonaws.com</div></div>
+                            <div class="kv"><i class="ph ph-map-pin"></i><div class="k">Region</div><div class="v">eu-central-1</div></div>
+                            <div class="kv"><i class="ph ph-archive"></i><div class="k">Bucket</div><div class="v">kopi-eu</div></div>
+                            <div class="kv"><i class="ph ph-path"></i><div class="k">Addressing</div><div class="v">Virtual-hosted</div></div>
+                            <div class="kv"><i class="ph ph-identification-badge"></i><div class="k">Access key</div><div class="v mono">AKIA…9F2C</div></div>
+                            <div class="kv"><i class="ph ph-lock-key"></i><div class="k">Secret</div><div class="v"><i class="ph ph-check"></i> Set. Not shown.</div></div>
+                        </div>
+                        <div class="detail" data-detail="target" data-id="archive" hidden>
+                            <h2><i class="ph ph-cloud"></i> kopi-archive</h2>
+                            <div class="kv"><i class="ph ph-globe"></i><div class="k">Endpoint</div><div class="v mono">http://127.0.0.1:3900</div></div>
+                            <div class="kv"><i class="ph ph-map-pin"></i><div class="k">Region</div><div class="v">garage</div></div>
+                            <div class="kv"><i class="ph ph-archive"></i><div class="k">Bucket</div><div class="v">kopi-archive</div></div>
+                            <div class="kv"><i class="ph ph-path"></i><div class="k">Addressing</div><div class="v">Path-style</div></div>
+                            <div class="kv"><i class="ph ph-identification-badge"></i><div class="k">Access key</div><div class="v mono">GK…dev</div></div>
+                            <div class="kv"><i class="ph ph-lock-key"></i><div class="k">Secret</div><div class="v"><i class="ph ph-check"></i> Set. Not shown.</div></div>
+                            <p class="hint"><i class="ph ph-info"></i> Object names stay readable. They carry the source, the time, and a checksum.</p>
+                        </div>
+                        <div class="detail" data-detail="target" data-id="new" hidden>
+                            <h2><i class="ph ph-plus"></i> New target</h2>
+                            <label class="stack"><span><i class="ph ph-tag"></i> Name</span><input type="text" placeholder="kopi-eu"></label>
+                            <label class="stack"><span><i class="ph ph-globe"></i> Endpoint</span><input type="text" placeholder="s3.eu-central-1.amazonaws.com"></label>
+                            <label class="stack"><span><i class="ph ph-map-pin"></i> Region</span><input type="text" placeholder="eu-central-1"></label>
+                            <label class="stack"><span><i class="ph ph-archive"></i> Bucket</span><input type="text" placeholder="kopi-eu"></label>
+                            <label class="stack"><span><i class="ph ph-path"></i> Addressing</span>
+                                <select>
+                                    <option>Virtual-hosted</option>
+                                    <option>Path-style</option>
+                                </select>
+                            </label>
+                            <label class="stack"><span><i class="ph ph-identification-badge"></i> Access key</span><input type="text" placeholder="AKIA…"></label>
+                            <label class="stack"><span><i class="ph ph-lock-key"></i> Secret</span><input type="password" placeholder="Stored as ciphertext"></label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section data-screen="links" hidden>
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-link"></i> Links</h1>
+                        <p class="lede">A link is the job. Schedule, retention, and hook paths live here.</p>
+                    </div>
+                    <div class="head-actions">
+                        <label class="search">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input id="find-links" type="search" placeholder="Search links" aria-label="Search links">
+                        </label>
+                        <button type="button" class="btn" data-new="link"><i class="ph ph-plus"></i> New link</button>
+                    </div>
+                </header>
+                <div class="layout">
+                    <div class="panel" id="link-rows">
+                        <button type="button" class="pick is-on" data-pick="link" data-id="billing">
+                            <span class="pick-main"><i class="ph ph-database"></i> <strong>billing-db</strong> <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> <strong>kopi-eu</strong></span>
+                            <span class="pick-sub"><i class="ph ph-clock"></i> Daily at 02:00 <i class="ph ph-stack"></i> Keep 14</span>
+                        </button>
+                        <button type="button" class="pick" data-pick="link" data-id="uploads">
+                            <span class="pick-main"><i class="ph ph-folder"></i> <strong>uploads</strong> <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> <strong>kopi-eu</strong></span>
+                            <span class="pick-sub"><i class="ph ph-clock"></i> Hourly <i class="ph ph-stack"></i> Keep 48 <i class="ph ph-terminal-window"></i> Hooks <span class="run"><i class="ph ph-circle-notch spin"></i> Encrypting</span></span>
+                        </button>
+                        <button type="button" class="pick" data-pick="link" data-id="ledger">
+                            <span class="pick-main"><i class="ph ph-database"></i> <strong>ledger</strong> <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> <strong>kopi-archive</strong></span>
+                            <span class="pick-sub"><i class="ph ph-clock"></i> Sundays at 03:00 <i class="ph ph-hourglass"></i> 90 days <span class="bad"><i class="ph ph-x"></i> Failed</span></span>
+                        </button>
+                        <button type="button" class="pick" data-pick="link" data-id="invoices">
+                            <span class="pick-main"><i class="ph ph-folder"></i> <strong>invoices</strong> <i class="ph ph-arrow-right"></i> <i class="ph ph-cloud"></i> <strong>kopi-archive</strong></span>
+                            <span class="pick-sub"><i class="ph ph-clock"></i> Daily at 02:00 <i class="ph ph-stack"></i> Keep 30</span>
+                        </button>
+                        <p class="empty" data-empty="link" hidden><i class="ph ph-magnifying-glass"></i> No links match.</p>
+                    </div>
+                    <div class="panel inspect">
+                        <div class="detail" data-detail="link" data-id="billing">
+                            <h2><i class="ph ph-link"></i> billing-db</h2>
+                            <div class="kv"><i class="ph ph-database"></i><div class="k">Source</div><div class="v">billing-db</div></div>
+                            <div class="kv"><i class="ph ph-cloud"></i><div class="k">Target</div><div class="v">kopi-eu</div></div>
+                            <div class="group">
+                                <div class="group-label">Schedule</div>
+                                <div class="kv"><i class="ph ph-clock"></i><div class="k">Cadence</div><div class="v">Daily at 02:00</div></div>
+                                <div class="kv"><i class="ph ph-code"></i><div class="k">Cron</div><div class="v mono">0 2 * * *</div></div>
+                                <div class="kv"><i class="ph ph-globe"></i><div class="k">Timezone</div><div class="v">Europe/Copenhagen</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Retention</div>
+                                <div class="kv"><i class="ph ph-stack"></i><div class="k">Rule</div><div class="v">Keep the last 14 successful backups</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Hooks</div>
+                                <div class="kv"><i class="ph ph-terminal-window"></i><div class="k">Pre</div><div class="v">Not set. The backup starts immediately.</div></div>
+                                <div class="kv"><i class="ph ph-file-code"></i><div class="k">Post</div><div class="v">Not set.</div></div>
+                            </div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-queue="q-billing"><i class="ph ph-play"></i> Run now</button>
+                            </div>
+                            <p class="queued" id="q-billing" hidden><i class="ph ph-check"></i> Queued at <b></b>. The worker starts it when the slot is free.</p>
+                        </div>
+                        <div class="detail" data-detail="link" data-id="uploads" hidden>
+                            <h2><i class="ph ph-link"></i> uploads</h2>
+                            <div class="kv"><i class="ph ph-folder"></i><div class="k">Source</div><div class="v">uploads</div></div>
+                            <div class="kv"><i class="ph ph-cloud"></i><div class="k">Target</div><div class="v">kopi-eu</div></div>
+                            <div class="kv"><i class="ph ph-circle-notch spin"></i><div class="k">Now</div><div class="v run">Encrypting. This link will not start a second run.</div></div>
+                            <div class="group">
+                                <div class="group-label">Schedule</div>
+                                <div class="kv"><i class="ph ph-clock"></i><div class="k">Cadence</div><div class="v">Every hour</div></div>
+                                <div class="kv"><i class="ph ph-code"></i><div class="k">Cron</div><div class="v mono">0 * * * *</div></div>
+                                <div class="kv"><i class="ph ph-globe"></i><div class="k">Timezone</div><div class="v">Europe/Copenhagen</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Retention</div>
+                                <div class="kv"><i class="ph ph-stack"></i><div class="k">Rule</div><div class="v">Keep the last 48 successful backups</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Hooks</div>
+                                <div class="kv"><i class="ph ph-terminal-window"></i><div class="k">Pre</div><div class="v mono">/hooks/uploads-freeze.sh · 120s</div></div>
+                                <div class="kv"><i class="ph ph-file-code"></i><div class="k">Post</div><div class="v mono">/hooks/uploads-thaw.sh · 120s</div></div>
+                                <p class="hint"><i class="ph ph-info"></i> Both files stay on disk. Kopi runs each with bash. A pre-script failure skips the backup.</p>
+                            </div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" disabled><i class="ph ph-play"></i> Run now</button>
+                            </div>
+                        </div>
+                        <div class="detail" data-detail="link" data-id="ledger" hidden>
+                            <h2><i class="ph ph-link"></i> ledger</h2>
+                            <div class="kv"><i class="ph ph-database"></i><div class="k">Source</div><div class="v">ledger</div></div>
+                            <div class="kv"><i class="ph ph-cloud"></i><div class="k">Target</div><div class="v">kopi-archive</div></div>
+                            <div class="group">
+                                <div class="group-label">Schedule</div>
+                                <div class="kv"><i class="ph ph-calendar-blank"></i><div class="k">Cadence</div><div class="v">Sundays at 03:00</div></div>
+                                <div class="kv"><i class="ph ph-code"></i><div class="k">Cron</div><div class="v mono">0 3 * * 0</div></div>
+                                <div class="kv"><i class="ph ph-globe"></i><div class="k">Timezone</div><div class="v">Europe/Copenhagen</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Retention</div>
+                                <div class="kv"><i class="ph ph-hourglass"></i><div class="k">Rule</div><div class="v">Delete objects older than 90 days</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Hooks</div>
+                                <div class="kv"><i class="ph ph-terminal-window"></i><div class="k">Pre</div><div class="v">Not set</div></div>
+                                <div class="kv"><i class="ph ph-file-code"></i><div class="k">Post</div><div class="v mono">/hooks/ledger-thaw.sh · 600s</div></div>
+                            </div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-queue="q-ledger"><i class="ph ph-play"></i> Run now</button>
+                            </div>
+                            <p class="queued" id="q-ledger" hidden><i class="ph ph-check"></i> Queued at <b></b>. The worker starts it when the slot is free.</p>
+                        </div>
+                        <div class="detail" data-detail="link" data-id="invoices" hidden>
+                            <h2><i class="ph ph-link"></i> invoices</h2>
+                            <div class="kv"><i class="ph ph-folder"></i><div class="k">Source</div><div class="v">invoices</div></div>
+                            <div class="kv"><i class="ph ph-cloud"></i><div class="k">Target</div><div class="v">kopi-archive</div></div>
+                            <div class="group">
+                                <div class="group-label">Schedule</div>
+                                <div class="kv"><i class="ph ph-clock"></i><div class="k">Cadence</div><div class="v">Daily at 02:00</div></div>
+                                <div class="kv"><i class="ph ph-code"></i><div class="k">Cron</div><div class="v mono">0 2 * * *</div></div>
+                                <div class="kv"><i class="ph ph-globe"></i><div class="k">Timezone</div><div class="v">Europe/Copenhagen</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Retention</div>
+                                <div class="kv"><i class="ph ph-stack"></i><div class="k">Rule</div><div class="v">Keep the last 30 successful backups</div></div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Hooks</div>
+                                <div class="kv"><i class="ph ph-terminal-window"></i><div class="k">Pre</div><div class="v">Not set</div></div>
+                                <div class="kv"><i class="ph ph-file-code"></i><div class="k">Post</div><div class="v">Not set</div></div>
+                            </div>
+                            <div class="detail-actions">
+                                <button type="button" class="btn primary" data-queue="q-invoices"><i class="ph ph-play"></i> Run now</button>
+                            </div>
+                            <p class="queued" id="q-invoices" hidden><i class="ph ph-check"></i> Queued at <b></b>. The worker starts it when the slot is free.</p>
+                        </div>
+                        <div class="detail" data-detail="link" data-id="new" hidden>
+                            <h2><i class="ph ph-plus"></i> New link</h2>
+                            <label class="stack"><span><i class="ph ph-database"></i> Source</span>
+                                <select>
+                                    <option>billing-db</option>
+                                    <option>ledger</option>
+                                    <option>uploads</option>
+                                    <option>invoices</option>
+                                </select>
+                            </label>
+                            <label class="stack"><span><i class="ph ph-cloud"></i> Target</span>
+                                <select>
+                                    <option>kopi-eu</option>
+                                    <option>kopi-archive</option>
+                                </select>
+                            </label>
+                            <label class="stack"><span><i class="ph ph-code"></i> Cron</span><input type="text" value="0 2 * * *"></label>
+                            <label class="stack"><span><i class="ph ph-globe"></i> Timezone</span><input type="text" value="Europe/Copenhagen"></label>
+                            <div class="group">
+                                <div class="group-label">Retention</div>
+                                <div class="radio">
+                                    <input type="radio" name="ret-new" id="ret-n" checked>
+                                    <label for="ret-n"><i class="ph ph-stack"></i> Keep the last</label>
+                                    <input class="mini" type="number" value="14" aria-label="How many successful backups to keep">
+                                    <span>successes</span>
+                                </div>
+                                <div class="radio">
+                                    <input type="radio" name="ret-new" id="ret-age">
+                                    <label for="ret-age"><i class="ph ph-hourglass"></i> Delete older than</label>
+                                    <input class="mini" type="number" value="90" aria-label="Delete backups older than this many days">
+                                    <span>days</span>
+                                </div>
+                            </div>
+                            <div class="group">
+                                <div class="group-label">Hooks</div>
+                                <label class="stack"><span><i class="ph ph-terminal-window"></i> Pre script</span><input type="text" placeholder="/hooks/freeze.sh"></label>
+                                <label class="stack"><span><i class="ph ph-timer"></i> Pre timeout, seconds</span><input type="number" value="120"></label>
+                                <label class="stack"><span><i class="ph ph-file-code"></i> Post script</span><input type="text" placeholder="/hooks/thaw.sh"></label>
+                                <label class="stack"><span><i class="ph ph-timer"></i> Post timeout, seconds</span><input type="number" value="120"></label>
+                                <p class="hint"><i class="ph ph-info"></i> An empty path skips that script. Kopi does not store the script body.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section data-screen="mail" hidden>
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-envelope"></i> Mail</h1>
+                        <p class="lede">Failure mail goes out for that job. The digest is the heartbeat. If it stops, something outside Kopi has to notice.</p>
+                    </div>
+                </header>
+                <div class="mail-grid">
+                    <div class="panel">
+                        <div class="detail">
+                            <h2><i class="ph ph-envelope-simple"></i> Channel</h2>
+                            <div class="kv"><i class="ph ph-globe"></i><div class="k">Host</div><div class="v mono">smtp.fastmail.com</div></div>
+                            <div class="kv"><i class="ph ph-plugs"></i><div class="k">Port</div><div class="v">587</div></div>
+                            <div class="kv"><i class="ph ph-at"></i><div class="k">From</div><div class="v">kopi@example.com</div></div>
+                            <div class="kv"><i class="ph ph-address-book"></i><div class="k">Recipients</div><div class="v">ops@example.com, ada@example.com</div></div>
+                            <div class="kv"><i class="ph ph-lock-key"></i><div class="k">Password</div><div class="v"><i class="ph ph-check"></i> Set. Not shown.</div></div>
+                            <div class="kv"><i class="ph ph-bell"></i><div class="k">Failure mail</div><div class="v">On. One message per failed run.</div></div>
+                            <div class="kv"><i class="ph ph-sun"></i><div class="k">Digest</div><div class="v">Daily at 08:00</div></div>
+                            <div class="kv"><i class="ph ph-globe"></i><div class="k">Timezone</div><div class="v">Europe/Copenhagen</div></div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="detail">
+                            <h2><i class="ph ph-newspaper"></i> Last digest</h2>
+                            <p class="hint" style="margin-top:0;margin-bottom:12px;"><i class="ph ph-paper-plane"></i> Sent 3 Nov 08:00. Next one tomorrow at 08:00.</p>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th><i class="ph ph-link"></i> Link</th>
+                                        <th><i class="ph ph-check"></i> Last success</th>
+                                        <th><i class="ph ph-x"></i> Last failure</th>
+                                        <th class="num"><i class="ph ph-hard-drive"></i> Last size</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><i class="ph ph-database"></i> billing-db</td>
+                                        <td>3 Nov 02:14</td>
+                                        <td>—</td>
+                                        <td class="num">842 MB</td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="ph ph-folder"></i> uploads</td>
+                                        <td>3 Nov 08:00</td>
+                                        <td>1 Nov 16:20</td>
+                                        <td class="num">1.0 GB</td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="ph ph-database"></i> ledger</td>
+                                        <td>26 Oct 03:02</td>
+                                        <td class="bad">2 Nov 03:40</td>
+                                        <td class="num">6.0 GB</td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="ph ph-folder"></i> invoices</td>
+                                        <td>2 Nov 02:02</td>
+                                        <td>—</td>
+                                        <td class="num">12.4 GB</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section data-screen="audit" hidden>
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-scroll"></i> Audit</h1>
+                        <p class="lede">Logins, configuration, runs, restores, and the key. A job's own output stays on the run.</p>
+                    </div>
+                    <div class="head-actions">
+                        <label class="search">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input id="find-audit" type="search" placeholder="Search the log" aria-label="Search the audit log">
+                        </label>
+                    </div>
+                </header>
+                <div class="panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><i class="ph ph-clock"></i> When</th>
+                                <th><i class="ph ph-user"></i> Who</th>
+                                <th><i class="ph ph-list-bullets"></i> Event</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-rows">
+                            <tr>
+                                <td>3 Nov 17:02</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-play"></i> Run started · uploads → kopi-eu</td>
+                            </tr>
+                            <tr>
+                                <td>3 Nov 02:14</td>
+                                <td><i class="ph ph-cpu"></i> Worker</td>
+                                <td><i class="ph ph-check"></i> Run finished · billing-db succeeded · 842 MB</td>
+                            </tr>
+                            <tr>
+                                <td>2 Nov 18:12</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-pencil-simple"></i> Link changed · uploads · pre and post paths set</td>
+                            </tr>
+                            <tr>
+                                <td>2 Nov 11:20</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-arrow-counter-clockwise"></i> Restore · invoices → /restore/invoices</td>
+                            </tr>
+                            <tr>
+                                <td>2 Nov 03:40</td>
+                                <td><i class="ph ph-cpu"></i> Worker</td>
+                                <td><i class="ph ph-x"></i> Run failed · ledger · post script timed out · mail sent</td>
+                            </tr>
+                            <tr>
+                                <td>1 Nov 09:04</td>
+                                <td><i class="ph ph-user"></i> Niels Vang</td>
+                                <td><i class="ph ph-sign-in"></i> Login</td>
+                            </tr>
+                            <tr>
+                                <td>1 Nov 08:41</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-folder-plus"></i> Source created · invoices</td>
+                            </tr>
+                            <tr>
+                                <td>28 Oct 16:05</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-cloud"></i> Target created · kopi-archive</td>
+                            </tr>
+                            <tr>
+                                <td>28 Oct 15:48</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-envelope"></i> Notification settings changed</td>
+                            </tr>
+                            <tr>
+                                <td>28 Oct 15:12</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-check-circle"></i> Setup complete · first admin created</td>
+                            </tr>
+                            <tr>
+                                <td>28 Oct 15:12</td>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td><i class="ph ph-key"></i> Key generated · offered for download once</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="empty" data-empty="audit" hidden><i class="ph ph-magnifying-glass"></i> Nothing in the log matches.</p>
+                </div>
+            </section>
+
+            <section data-screen="users" hidden>
+                <header class="head">
+                    <div>
+                        <h1><i class="ph ph-users"></i> Users</h1>
+                        <p class="lede">Admins change sources, targets, links, mail, and the key. Viewers can read runs, restores, and the audit log.</p>
+                    </div>
+                </header>
+                <div class="panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><i class="ph ph-user"></i> Name</th>
+                                <th><i class="ph ph-sign-in"></i> Login</th>
+                                <th><i class="ph ph-shield"></i> Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><i class="ph ph-user"></i> Ada Holm</td>
+                                <td class="mono">ada</td>
+                                <td><i class="ph ph-shield-check"></i> Admin · you</td>
+                            </tr>
+                            <tr>
+                                <td><i class="ph ph-user"></i> Niels Vang</td>
+                                <td class="mono">niels</td>
+                                <td><i class="ph ph-eye"></i> Viewer</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="roles">
+                    <section class="panel">
+                        <h2><i class="ph ph-shield-check"></i> Admin</h2>
+                        <ul>
+                            <li><i class="ph ph-database"></i> Sources, targets, and links</li>
+                            <li><i class="ph ph-envelope"></i> The mail channel</li>
+                            <li><i class="ph ph-key"></i> Replacing secret.key</li>
+                            <li><i class="ph ph-play"></i> Run now, and restore</li>
+                        </ul>
+                    </section>
+                    <section class="panel">
+                        <h2><i class="ph ph-eye"></i> Viewer</h2>
+                        <ul>
+                            <li><i class="ph ph-clock-counter-clockwise"></i> Backup history</li>
+                            <li><i class="ph ph-arrow-counter-clockwise"></i> Restores</li>
+                            <li><i class="ph ph-scroll"></i> The audit log</li>
+                            <li><i class="ph ph-eye-slash"></i> Secrets stay hidden</li>
+                        </ul>
+                    </section>
+                </div>
+            </section>
+        </div>
     </div>
 
-    <div id="main">
-
-        
-
+    <div id="login" hidden>
+        <div class="login-card">
+            <div class="login-brand">
+                <img src="../icon.png" alt="">
+                <div>
+                    <strong>Kopi</strong>
+                    <span>Sign in to the operator</span>
+                </div>
+            </div>
+            <label class="stack"><span><i class="ph ph-user"></i> Name</span><input id="login-name" type="text" value="ada"></label>
+            <label class="stack"><span><i class="ph ph-lock-key"></i> Password</span><input id="login-pass" type="password" placeholder="Password"></label>
+            <button type="button" class="btn primary" id="sign-in" style="width:100%;justify-content:center;">
+                <i class="ph ph-sign-in"></i> Sign in
+            </button>
+            <p class="hint"><i class="ph ph-key"></i> A new install stops on setup first. That screen creates the admin and secret.key.</p>
+        </div>
     </div>
 
+    <div id="backdrop" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="restore-title">
+            <h2 id="restore-title"><i class="ph ph-arrow-counter-clockwise"></i> Restore <span id="restore-name"></span></h2>
+            <p class="modal-lead">Plaintext is written only at the destination you name.</p>
+            <div class="modal-meta">
+                <div><i class="ph ph-file-lock"></i> <span class="mono" id="restore-object"></span></div>
+                <div><i class="ph ph-hard-drive"></i> <span id="restore-size"></span></div>
+                <div><i class="ph ph-fingerprint"></i> <span class="mono" id="restore-sum"></span></div>
+            </div>
+            <label class="stack">
+                <span id="restore-label"><i class="ph ph-database"></i> Database name</span>
+                <input id="restore-dest" type="text">
+            </label>
+            <p class="hint" id="restore-hint"></p>
+            <div class="actions">
+                <button type="button" class="btn" id="restore-cancel"><i class="ph ph-x"></i> Cancel</button>
+                <button type="button" class="btn primary" id="restore-go"><i class="ph ph-arrow-counter-clockwise"></i> Restore</button>
+            </div>
+        </div>
+    </div>
 
+    <script>
+        const screens = document.querySelectorAll("[data-screen]");
+        const nav = document.querySelectorAll("[data-go]");
 
+        function show(id) {
+            screens.forEach((screen) => {
+                screen.hidden = screen.dataset.screen !== id;
+            });
+            nav.forEach((button) => {
+                const on = button.dataset.go === id;
+                button.classList.toggle("is-on", on);
+                if (on) button.setAttribute("aria-current", "page");
+                else button.removeAttribute("aria-current");
+            });
+        }
 
+        nav.forEach((button) => {
+            button.addEventListener("click", () => show(button.dataset.go));
+        });
+
+        function select(kind, id) {
+            document.querySelectorAll(`[data-pick="${kind}"]`).forEach((el) => {
+                el.classList.toggle("is-on", el.dataset.id === id);
+            });
+            document.querySelectorAll(`[data-detail="${kind}"]`).forEach((el) => {
+                el.hidden = el.dataset.id !== id;
+            });
+        }
+
+        document.querySelectorAll("[data-pick]").forEach((el) => {
+            el.addEventListener("click", () => select(el.dataset.pick, el.dataset.id));
+            el.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") select(el.dataset.pick, el.dataset.id);
+            });
+        });
+
+        document.querySelectorAll("[data-new]").forEach((button) => {
+            button.addEventListener("click", () => select(button.dataset.new, "new"));
+        });
+
+        document.querySelectorAll("[data-kind]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const wrap = button.closest(".detail");
+                wrap.querySelectorAll("[data-kind]").forEach((item) => {
+                    item.classList.toggle("is-on", item === button);
+                });
+                wrap.querySelectorAll("[data-kind-panel]").forEach((panel) => {
+                    panel.hidden = panel.dataset.kindPanel !== button.dataset.kind;
+                });
+            });
+        });
+
+        document.querySelectorAll("[data-queue]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const note = document.getElementById(button.dataset.queue);
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, "0");
+                const mm = String(now.getMinutes()).padStart(2, "0");
+                note.querySelector("b").textContent = `${hh}:${mm}`;
+                note.hidden = false;
+                button.disabled = true;
+            });
+        });
+
+        function bindFilter(inputId, rowSelector, emptyName) {
+            const input = document.getElementById(inputId);
+            const empty = document.querySelector(`[data-empty="${emptyName}"]`);
+            input.addEventListener("input", () => {
+                const query = input.value.trim().toLowerCase();
+                const rows = [...document.querySelectorAll(rowSelector)];
+                rows.forEach((row) => {
+                    row.hidden = Boolean(query) && !row.innerText.toLowerCase().includes(query);
+                });
+                empty.hidden = rows.some((row) => !row.hidden);
+            });
+        }
+
+        bindFilter("find-runs", "#run-rows tr", "run");
+        bindFilter("find-sources", "#source-rows .pick", "source");
+        bindFilter("find-targets", "#target-rows .pick", "target");
+        bindFilter("find-links", "#link-rows .pick", "link");
+        bindFilter("find-audit", "#audit-rows tr", "audit");
+
+        const backdrop = document.getElementById("backdrop");
+        const restoreLabel = document.getElementById("restore-label");
+        const restoreDest = document.getElementById("restore-dest");
+        const restoreHint = document.getElementById("restore-hint");
+        let restoreKind = "database";
+        let restoreName = "";
+
+        function openRestore(button) {
+            restoreKind = button.dataset.kind;
+            restoreName = button.dataset.name;
+            document.getElementById("restore-name").textContent = restoreName;
+            document.getElementById("restore-object").textContent = button.dataset.object;
+            document.getElementById("restore-size").textContent = button.dataset.size;
+            document.getElementById("restore-sum").textContent = button.dataset.sum;
+            restoreDest.value = button.dataset.dest;
+            if (restoreKind === "folder") {
+                restoreLabel.innerHTML = '<i class="ph ph-folder-open"></i> Folder path';
+                restoreHint.innerHTML = '<i class="ph ph-info"></i> Files are mode 0600. Directories are mode 0700.';
+            } else {
+                restoreLabel.innerHTML = '<i class="ph ph-database"></i> Database name';
+                restoreHint.innerHTML = '<i class="ph ph-database"></i> The dump is restored into this database.';
+            }
+            backdrop.hidden = false;
+            restoreDest.focus();
+        }
+
+        function closeRestore() {
+            backdrop.hidden = true;
+        }
+
+        document.querySelectorAll("[data-open-restore]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.stopPropagation();
+                openRestore(button);
+            });
+        });
+
+        document.getElementById("restore-cancel").addEventListener("click", closeRestore);
+        backdrop.addEventListener("click", closeRestore);
+        document.querySelector(".modal").addEventListener("click", (event) => event.stopPropagation());
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !backdrop.hidden) closeRestore();
+        });
+
+        document.getElementById("restore-go").addEventListener("click", () => {
+            const dest = restoreDest.value.trim() || "the destination";
+            const note = document.getElementById("action-note");
+            const icon = document.createElement("i");
+            icon.className = "ph ph-arrow-counter-clockwise";
+            note.replaceChildren(icon, document.createTextNode(`Restore of ${restoreName} queued to ${dest}.`));
+            note.hidden = false;
+            closeRestore();
+            show("runs");
+        });
+
+        document.getElementById("sign-out").addEventListener("click", () => {
+            document.getElementById("app").hidden = true;
+            document.getElementById("login").hidden = false;
+            document.getElementById("login-name").focus();
+        });
+
+        document.getElementById("sign-in").addEventListener("click", () => {
+            document.getElementById("login").hidden = true;
+            document.getElementById("app").hidden = false;
+        });
+
+        const counters = document.querySelectorAll("[data-mb]");
+        let megabytes = 4812.4;
+
+        function paintMegabytes() {
+            const text = megabytes.toLocaleString("en-GB", {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+            });
+            counters.forEach((node) => {
+                node.textContent = text;
+            });
+        }
+
+        paintMegabytes();
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            setInterval(() => {
+                megabytes += 2.4 + Math.random() * 3.8;
+                paintMegabytes();
+            }, 1000);
+        }
+
+        show("runs");
+    </script>
 </body>
 </html>
