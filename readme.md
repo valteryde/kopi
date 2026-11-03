@@ -6,6 +6,8 @@ Kopi backs up Postgres databases and folders to S3. The host encrypts every back
 - [Stack](docs/techstack.md)
 - [Roadmap](docs/roadmap.md)
 - [Phase 1](docs/phase-1.md)
+- [Phase 2](docs/phase-2.md)
+- [Phase 3](docs/phase-3.md)
 
 ## Development harness
 
