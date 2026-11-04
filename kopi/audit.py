@@ -1,4 +1,4 @@
-"""Audit rows for sign-in, setup, sources, targets, and runs.
+"""Audit rows for sign-in, setup, sources, targets, links, and runs.
 
 The sentence is stored when the event happens. Job stdout stays on the run.
 """
@@ -15,6 +15,9 @@ SOURCE_CREATED = "source_created"
 SOURCE_CHANGED = "source_changed"
 TARGET_CREATED = "target_created"
 TARGET_CHANGED = "target_changed"
+LINK_CREATED = "link_created"
+LINK_CHANGED = "link_changed"
+LINK_QUEUED = "link_queued"
 
 ICONS = {
     LOGIN: "sign-in",
@@ -27,6 +30,9 @@ ICONS = {
     SOURCE_CHANGED: "pencil-simple",
     TARGET_CREATED: "cloud",
     TARGET_CHANGED: "pencil-simple",
+    LINK_CREATED: "link",
+    LINK_CHANGED: "pencil-simple",
+    LINK_QUEUED: "play",
 }
 
 WORKER_NAME = "Worker"
@@ -58,6 +64,18 @@ def note_target_created(user, name: str) -> None:
 
 def note_target_changed(user, name: str) -> None:
     _user(user, TARGET_CHANGED, f"Target changed · {name}")
+
+
+def note_link_created(user, source: str, target: str) -> None:
+    _user(user, LINK_CREATED, f"Link created · {source} → {target}")
+
+
+def note_link_changed(user, source: str, target: str) -> None:
+    _user(user, LINK_CHANGED, f"Link changed · {source} → {target}")
+
+
+def note_link_queued(user, source: str, target: str) -> None:
+    _user(user, LINK_QUEUED, f"Run queued · {source} → {target}")
 
 
 def note_run_started(source: str, target: str) -> None:

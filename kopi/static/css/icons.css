@@ -25,6 +25,10 @@
     content: "\e00c";
 }
 
+.ph.ph-arrow-right:before {
+    content: "\e06c";
+}
+
 .ph.ph-check:before {
     content: "\e182";
 }
@@ -45,6 +49,10 @@
     content: "\e1aa";
 }
 
+.ph.ph-code:before {
+    content: "\e1bc";
+}
+
 .ph.ph-cpu:before {
     content: "\e610";
 }
@@ -59,6 +67,10 @@
 
 .ph.ph-eye:before {
     content: "\e220";
+}
+
+.ph.ph-file-code:before {
+    content: "\e914";
 }
 
 .ph.ph-folder:before {
@@ -83,6 +95,10 @@
 
 .ph.ph-hard-drives:before {
     content: "\e2a0";
+}
+
+.ph.ph-hourglass:before {
+    content: "\e2b2";
 }
 
 .ph.ph-identification-badge:before {
@@ -161,6 +177,10 @@
     content: "\e42a";
 }
 
+.ph.ph-stack:before {
+    content: "\e466";
+}
+
 .ph.ph-table:before {
     content: "\e476";
 }
@@ -171,6 +191,10 @@
 
 .ph.ph-terminal-window:before {
     content: "\eae8";
+}
+
+.ph.ph-timer:before {
+    content: "\e492";
 }
 
 .ph.ph-user:before {

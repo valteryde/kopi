@@ -1,0 +1,174 @@
+{% extends "base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% macro shown(field) -%}
+{{ field.value() if field.value() is not none else "" }}
+{%- endmacro %}
+
+{% macro field_error(name) %}
+{% if form[name].errors %}
+<p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form[name].errors[0] }}</p>
+{% endif %}
+{% endmacro %}
+
+{% macro activity_line() %}
+{% if activity and activity.kind == "pending" %}
+<p class="queued">{{ ui.icon("check") }} Queued at <b>{{ activity.when }}</b>. The worker starts it when the slot is free.</p>
+{% elif activity and activity.kind == "running" %}
+<p class="hint">{{ ui.icon("play") }} This link will not start a second run.</p>
+{% endif %}
+{% endmacro %}
+
+{% block title %}Links · Kopi{% endblock %}
+
+{% block main %}
+{% call ui.page_head("Links", "link", "A link is the job. Schedule, retention, and hook paths live here.") %}
+    {{ ui.search_field("find-links", "Search links", "Search links", "#link-rows .pick", "link") }}
+    {% if can_edit %}
+    <a class="btn" href="{{ url('link-new') }}">{{ ui.icon("plus") }} New link</a>
+    {% endif %}
+{% endcall %}
+<div class="layout">
+    <div class="panel" id="link-rows">
+        {% for pick in picks %}
+        <a class="pick{% if pick.current %} is-on{% endif %}" href="{{ pick.href }}"{% if pick.current %} aria-current="true"{% endif %}>
+            <span class="pick-main">{{ ui.icon(pick.source_icon) }} <strong>{{ pick.source }}</strong> {{ ui.icon("arrow-right") }} {{ ui.icon("cloud") }} <strong>{{ pick.target }}</strong></span>
+            <span class="pick-sub">{{ ui.icon("clock") }} {{ pick.cadence }} {{ ui.icon(pick.retention_icon) }} {{ pick.retention }}{% if pick.state == "running" %} <span class="run">{{ ui.icon("play") }} Running</span>{% elif pick.state == "pending" %} {{ ui.icon("check") }} Queued{% endif %}</span>
+        </a>
+        {% endfor %}
+        {{ ui.empty_line("link", "No links match.") }}
+    </div>
+    <div class="panel inspect">
+        {% if mode == "empty" %}
+        <div class="detail">
+            <h2>{{ ui.icon("link") }} Nothing here yet</h2>
+        </div>
+        {% elif mode == "detail" %}
+        <div class="detail">
+            <h2>{{ ui.icon("link") }} {{ detail.title }}</h2>
+            <div class="kv">{{ ui.icon(detail.source_icon) }}<div class="k">Source</div><div class="v">{{ detail.source }}</div></div>
+            <div class="kv">{{ ui.icon("cloud") }}<div class="k">Target</div><div class="v">{{ detail.target }}</div></div>
+            <div class="group">
+                <div class="group-label">Schedule</div>
+                <div class="kv">{{ ui.icon("code") }}<div class="k">Cron</div><div class="v mono">{{ detail.cadence }}</div></div>
+                <div class="kv">{{ ui.icon("globe") }}<div class="k">Timezone</div><div class="v">{{ detail.timezone }}</div></div>
+            </div>
+            <div class="group">
+                <div class="group-label">Retention</div>
+                <div class="kv">{{ ui.icon(detail.retention_icon) }}<div class="k">Rule</div><div class="v">{{ detail.retention }}</div></div>
+                <p class="hint">{{ ui.icon("info") }} The rule is stored. Nothing is deleted yet.</p>
+            </div>
+            <div class="group">
+                <div class="group-label">Hooks</div>
+                <div class="kv">{{ ui.icon("terminal-window") }}<div class="k">Pre</div><div class="v{% if detail.pre_mono %} mono{% endif %}">{{ detail.pre }}</div></div>
+                <div class="kv">{{ ui.icon("file-code") }}<div class="k">Post</div><div class="v{% if detail.post_mono %} mono{% endif %}">{{ detail.post }}</div></div>
+            </div>
+            {{ activity_line() }}
+        </div>
+        {% else %}
+        <div class="detail">
+            <h2>{% if mode == "new" %}{{ ui.icon("plus") }} New link{% else %}{{ ui.icon("link") }} {{ link.source.name }}{% endif %}</h2>
+            <form method="post" action="{% if mode == 'new' %}{{ url('link-new') }}{% else %}{{ url('link', args=[link.pk]) }}{% endif %}" autocomplete="off">
+                {{ csrf_input }}
+                {% for error in form.non_field_errors() %}
+                <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+                {% endfor %}
+                <label class="stack">
+                    <span>{{ ui.icon("database") }} Source</span>
+                    <select name="source">
+                        {% for row in source_choices %}
+                        <option value="{{ row.pk }}"{% if form["source"].value()|string == row.pk|string %} selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {{ field_error("source") }}
+                    {% if not source_choices %}
+                    <p class="hint">{{ ui.icon("warning") }} Add a source before creating a link.</p>
+                    {% endif %}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("cloud") }} Target</span>
+                    <select name="target">
+                        {% for row in target_choices %}
+                        <option value="{{ row.pk }}"{% if form["target"].value()|string == row.pk|string %} selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {{ field_error("target") }}
+                    {% if not target_choices %}
+                    <p class="hint">{{ ui.icon("warning") }} Add a target before creating a link.</p>
+                    {% endif %}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("code") }} Cron</span>
+                    <input class="mono" type="text" name="cadence" value="{{ shown(form['cadence']) }}" placeholder="0 2 * * *">
+                    {{ field_error("cadence") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("globe") }} Timezone</span>
+                    <input type="text" name="timezone" value="{{ shown(form['timezone']) }}" placeholder="Europe/Copenhagen">
+                    {{ field_error("timezone") }}
+                </label>
+                <div class="group">
+                    <div class="group-label">Retention</div>
+                    <div class="radio">
+                        <input type="radio" name="retention" id="retention-count" value="count"{% if form["retention"].value() != "age" %} checked{% endif %}>
+                        <label for="retention-count">{{ ui.icon("stack") }} Keep the last</label>
+                        <input class="mini" type="number" name="retention_count" value="{{ shown(form['retention_count']) }}" min="1" aria-label="How many successful backups to keep">
+                        <span>successes</span>
+                    </div>
+                    {{ field_error("retention_count") }}
+                    <div class="radio">
+                        <input type="radio" name="retention" id="retention-age" value="age"{% if form["retention"].value() == "age" %} checked{% endif %}>
+                        <label for="retention-age">{{ ui.icon("hourglass") }} Delete older than</label>
+                        <input class="mini" type="number" name="retention_days" value="{{ shown(form['retention_days']) }}" min="1" aria-label="Delete backups older than this many days">
+                        <span>days</span>
+                    </div>
+                    {{ field_error("retention_days") }}
+                    {{ field_error("retention") }}
+                    <p class="hint">{{ ui.icon("info") }} The rule is stored. Nothing is deleted yet.</p>
+                </div>
+                <div class="group">
+                    <div class="group-label">Hooks</div>
+                    <label class="stack">
+                        <span>{{ ui.icon("terminal-window") }} Pre script</span>
+                        <input type="text" name="pre_script_path" value="{{ shown(form['pre_script_path']) }}" placeholder="/hooks/freeze.sh">
+                        {{ field_error("pre_script_path") }}
+                    </label>
+                    <label class="stack">
+                        <span>{{ ui.icon("timer") }} Pre timeout, seconds</span>
+                        <input type="number" name="pre_script_timeout" value="{{ shown(form['pre_script_timeout']) }}" min="1">
+                        {{ field_error("pre_script_timeout") }}
+                    </label>
+                    <label class="stack">
+                        <span>{{ ui.icon("file-code") }} Post script</span>
+                        <input type="text" name="post_script_path" value="{{ shown(form['post_script_path']) }}" placeholder="/hooks/thaw.sh">
+                        {{ field_error("post_script_path") }}
+                    </label>
+                    <label class="stack">
+                        <span>{{ ui.icon("timer") }} Post timeout, seconds</span>
+                        <input type="number" name="post_script_timeout" value="{{ shown(form['post_script_timeout']) }}" min="1">
+                        {{ field_error("post_script_timeout") }}
+                    </label>
+                    <p class="hint">{{ ui.icon("info") }} An empty path skips that script. Kopi does not store the script body.</p>
+                </div>
+                <div class="detail-actions">
+                    <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
+                </div>
+            </form>
+            {% if mode == "edit" %}
+            <form method="post" action="{{ url('link-run', args=[link.pk]) }}">
+                {{ csrf_input }}
+                <div class="detail-actions">
+                    <button type="submit" class="btn primary"{% if activity %} disabled{% endif %}>{{ ui.icon("play") }} Run now</button>
+                </div>
+            </form>
+            {{ activity_line() }}
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static('js/filter.js') }}"></script>
+{% endblock %}

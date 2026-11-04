@@ -37,8 +37,14 @@ def _():
     assert ">shell<" in body
     assert "Viewer" in body
     assert 'id="sign-out"' in body
-    assert body.index(">Runs<") < body.index(">Sources<") < body.index(">Targets<") < body.index(">Audit<")
-    for label in ("Links", "Mail", "Users"):
+    assert (
+        body.index(">Runs<")
+        < body.index(">Sources<")
+        < body.index(">Targets<")
+        < body.index(">Links<")
+        < body.index(">Audit<")
+    )
+    for label in ("Mail", "Users"):
         assert f">{label}<" not in body
 
 
