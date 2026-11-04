@@ -265,6 +265,55 @@ def _():
         assert "not a regular file" in run.log
 
 
+@test("a pre script that points at secret.key is refused and the key stays out of the log")
+def _():
+    with tempfile_dir() as tmp:
+        identity = generate_identity(tmp / "secret.key")
+        secret = identity.path.read_text()
+        run = _run(tmp, pre=str(identity.path))
+        execute(run.pk, identity=identity, storage=FakeStorage(), work_dir=tmp / "work")
+        run = _refresh(run)
+        assert run.status == Run.Status.FAILED
+        assert "not allowed" in run.log
+        assert "AGE-SECRET-KEY-" not in run.log
+        assert secret not in run.log
+
+
+@test("a hook on the work volume is refused")
+def _():
+    from kopi.settings import work_directory
+
+    with tempfile_dir() as tmp:
+        script = work_directory() / f"hook-{uuid.uuid4().hex[:8]}.sh"
+        script.parent.mkdir(parents=True, exist_ok=True)
+        _script(script, "#!/bin/bash\nexit 0\n")
+        try:
+            run = _run(tmp, pre=str(script))
+            identity = generate_identity(tmp / "secret.key")
+            execute(run.pk, identity=identity, storage=FakeStorage(), work_dir=tmp / "work")
+            run = _refresh(run)
+            assert run.status == Run.Status.FAILED
+            assert "not allowed" in run.log
+        finally:
+            script.unlink(missing_ok=True)
+
+
+@test("a hook that prints an age secret key leaves that line out of the run log")
+def _():
+    with tempfile_dir() as tmp:
+        pre = _script(
+            tmp / "pre.sh",
+            "#!/bin/bash\nprintf '%s\\n' 'AGE-SECRET-KEY-1example' >&2\nexit 1\n",
+        )
+        run = _run(tmp, pre=pre)
+        identity = generate_identity(tmp / "secret.key")
+        execute(run.pk, identity=identity, storage=FakeStorage(), work_dir=tmp / "work")
+        run = _refresh(run)
+        assert run.status == Run.Status.FAILED
+        assert "script exited 1" in run.log
+        assert "AGE-SECRET-KEY-" not in run.log
+
+
 @test("stdout and stderr are capped at 1 MiB")
 def _():
     with tempfile_dir() as tmp:
