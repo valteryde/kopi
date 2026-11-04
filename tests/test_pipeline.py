@@ -11,7 +11,7 @@ import tracemalloc
 from pathlib import Path
 from unittest.mock import patch
 
-from ward import test
+from ward import raises, test
 
 from kopi.identity import decrypt, generate_identity
 from kopi.pipeline import (
@@ -281,3 +281,58 @@ def _():
         assert "marker" not in box
         assert not marker_path(ciphertext).exists()
         assert not marker_path(ciphertext).with_name(marker_path(ciphertext).name + ".tmp").exists()
+
+
+@test("include and exclude globs choose the archived tree and still skip secret.key")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        identity = generate_identity(root / "secret.key")
+        source = root / "src"
+        docs = source / "docs"
+        nested = docs / "nested"
+        nested.mkdir(parents=True)
+        (docs / "keep.txt").write_text("keep\n")
+        (docs / "skip.tmp").write_text("skip\n")
+        (nested / "deep.txt").write_text("deep\n")
+        (source / "other.txt").write_text("other\n")
+        (source / "secret.key").write_text("do-not-archive\n")
+        (docs / "secret.key").write_text("do-not-archive\n")
+        (docs / "link").symlink_to("keep.txt")
+        ciphertext = root / "work" / "run.age"
+        archive_folder(
+            source,
+            identity,
+            ciphertext,
+            "filtered",
+            includes="docs/**\n",
+            excludes="*.tmp\n",
+        )
+        payload = _archive_bytes(identity.path, ciphertext)
+        assert b"skip" not in payload
+        assert b"other" not in payload
+        assert b"do-not-archive" not in payload
+        listing = subprocess.run(
+            [_gnu_tar(), "--list", "--verbose", "--file=-"],
+            input=payload,
+            stdout=subprocess.PIPE,
+            check=False,
+        )
+        assert listing.returncode == 0
+        members = _members(listing.stdout.decode())
+        assert {"docs", "docs/keep.txt", "docs/nested", "docs/nested/deep.txt", "docs/link"} <= members
+        assert "docs/skip.tmp" not in members
+        assert "other.txt" not in members
+        assert "secret.key" not in members
+        assert "docs/secret.key" not in members
+        assert " -> keep.txt" in _entry(listing.stdout.decode(), "docs/link")
+        missed = root / "missed.age"
+        with raises(PipelineError):
+            archive_folder(
+                source,
+                identity,
+                missed,
+                "missed",
+                includes="missing/**\n",
+            )
+        assert not missed.exists()

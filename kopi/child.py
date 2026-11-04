@@ -401,7 +401,12 @@ def _archive(run, ciphertext: Path, identity: Identity, tmpdir: Path, ctx: _Cont
         return _archive_postgres(source, ciphertext, identity, tmpdir, ctx, str(run.pk))
     if source.kind != Source.Kind.FOLDER:
         raise PipelineError("unsupported source")
-    ctx.producer = start_folder_producer(Path(source.root_path), tmpdir=tmpdir)
+    ctx.producer = start_folder_producer(
+        Path(source.root_path),
+        includes=source.include_rules,
+        excludes=source.exclude_rules,
+        tmpdir=tmpdir,
+    )
     try:
         if ctx.stalled.is_set():
             ctx.producer.kill()

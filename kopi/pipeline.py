@@ -8,11 +8,13 @@ the SHA-256. The sibling marker is written only after both commands exit 0
 and the ciphertext has been fsynced. No marker means the file is unfinished.
 """
 
+import fnmatch
 import hashlib
 import json
 import os
 import shutil
 import subprocess
+import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,7 +42,12 @@ class Marker:
 class Producer:
     """Processes whose last stdout is the stream copied into age."""
 
-    def __init__(self, processes: list[subprocess.Popen[bytes]]):
+    def __init__(
+        self,
+        processes: list[subprocess.Popen[bytes]],
+        *,
+        cleanup: list[Path] | None = None,
+    ):
         if not processes:
             raise PipelineError("missing producer")
         stdout = processes[-1].stdout
@@ -48,6 +55,7 @@ class Producer:
             raise PipelineError("producer has no stdout")
         self.processes = processes
         self.stdout = stdout
+        self.cleanup = list(cleanup or [])
 
     def kill(self) -> None:
         for process in self.processes:
@@ -56,11 +64,15 @@ class Producer:
 
     def wait(self) -> int:
         code = 0
-        for process in self.processes:
-            returned = process.wait()
-            if code == 0 and returned != 0:
-                code = returned
-        return code
+        try:
+            for process in self.processes:
+                returned = process.wait()
+                if code == 0 and returned != 0:
+                    code = returned
+            return code
+        finally:
+            _discard_paths(self.cleanup)
+            self.cleanup.clear()
 
 
 class _Written:
@@ -73,26 +85,41 @@ def marker_path(ciphertext: Path) -> Path:
     return ciphertext.with_name(ciphertext.name + ".marker")
 
 
-def start_folder_producer(root: Path, *, tmpdir: Path | None = None) -> Producer:
-    """GNU tar, posix format, into single-threaded zstd. Symlinks stay symlinks."""
+def start_folder_producer(
+    root: Path,
+    *,
+    includes: str = "",
+    excludes: str = "",
+    tmpdir: Path | None = None,
+) -> Producer:
+    """GNU tar, posix format, into single-threaded zstd. Symlinks stay symlinks.
+
+    An empty include list is the whole tree. Exclude rules then drop matches.
+    A file or directory named secret.key is skipped either way.
+    """
     root = Path(root)
     if root.is_symlink() or not root.is_dir():
         raise PipelineError("folder source is not a directory")
-    tar = _popen(_tar_create(root), stdout=subprocess.PIPE, tmpdir=tmpdir)
+    argv, cleanup = _tar_argv(root, includes, excludes, tmpdir)
     try:
-        assert tar.stdout is not None
-        zstd = _popen(
-            ["zstd", "--stdout", "--quiet", "--single-thread"],
-            stdin=tar.stdout,
-            stdout=subprocess.PIPE,
-            tmpdir=tmpdir,
-        )
+        tar = _popen(argv, stdout=subprocess.PIPE, tmpdir=tmpdir)
+        try:
+            assert tar.stdout is not None
+            zstd = _popen(
+                ["zstd", "--stdout", "--quiet", "--single-thread"],
+                stdin=tar.stdout,
+                stdout=subprocess.PIPE,
+                tmpdir=tmpdir,
+            )
+        except Exception:
+            tar.kill()
+            tar.wait()
+            raise
+        tar.stdout.close()
     except Exception:
-        tar.kill()
-        tar.wait()
+        _discard_paths(cleanup)
         raise
-    tar.stdout.close()
-    return Producer([tar, zstd])
+    return Producer([tar, zstd], cleanup=cleanup)
 
 
 def archive_folder(
@@ -101,11 +128,13 @@ def archive_folder(
     ciphertext: Path,
     run_id: str,
     *,
+    includes: str = "",
+    excludes: str = "",
     on_bytes=None,
     tmpdir: Path | None = None,
 ) -> Marker:
     return archive(
-        start_folder_producer(root, tmpdir=tmpdir),
+        start_folder_producer(root, includes=includes, excludes=excludes, tmpdir=tmpdir),
         identity,
         ciphertext,
         run_id,
@@ -244,6 +273,131 @@ def restore_folder(ciphertext: Path, identity: Identity, destination: Path) -> M
     return marker
 
 
+def _tar_argv(
+    root: Path,
+    includes: str,
+    excludes: str,
+    tmpdir: Path | None,
+) -> tuple[list[str], list[Path]]:
+    include_rules = _rules(includes)
+    exclude_rules = _rules(excludes)
+    if not include_rules and not exclude_rules:
+        return _tar_create(root), []
+    members = folder_members(root, includes, excludes)
+    if not members:
+        raise PipelineError("nothing matched")
+    directory = Path(tmpdir) if tmpdir is not None else Path(tempfile.mkdtemp(prefix="kopi-tar-"))
+    directory.mkdir(parents=True, exist_ok=True)
+    listing = directory / "tar-files"
+    # The leading ./ matches an unfiltered archive, whose member names start there.
+    names = [b"./" + member.encode() for member in members]
+    _write_private(listing, b"\0".join(names) + b"\0")
+    cleanup = [listing]
+    if tmpdir is None:
+        cleanup.append(directory)
+    return _tar_filtered(root, listing), cleanup
+
+
+def folder_members(root: Path, includes: str = "", excludes: str = "") -> list[str]:
+    """Relative paths to archive, parents before children.
+
+    A pattern with no slash matches a name in any directory. `**` crosses
+    directories. Other wildcards stay inside one path segment. Exclude wins.
+    `secret.key` is never a member.
+    """
+    root = Path(root)
+    include_rules = _rules(includes)
+    exclude_rules = _rules(excludes)
+    chosen: list[str] = []
+    for rel in _walk_tree(root):
+        if _excluded(rel, exclude_rules):
+            continue
+        if include_rules and not _included(rel, include_rules):
+            continue
+        chosen.append(rel)
+    return _with_ancestors(chosen)
+
+
+def _rules(text: str) -> tuple[str, ...]:
+    return tuple(line.strip().strip("/") for line in text.splitlines() if line.strip().strip("/"))
+
+
+def _walk_tree(root: Path):
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        base = Path(dirpath)
+        kept = []
+        for name in dirnames:
+            if name == IDENTITY_FILENAME:
+                continue
+            path = base / name
+            rel = path.relative_to(root).as_posix()
+            if path.is_symlink():
+                yield rel
+                continue
+            kept.append(name)
+            yield rel
+        dirnames[:] = kept
+        for name in filenames:
+            if name == IDENTITY_FILENAME:
+                continue
+            yield (base / name).relative_to(root).as_posix()
+
+
+def _excluded(relative: str, rules: tuple[str, ...]) -> bool:
+    if not rules:
+        return False
+    parts = relative.split("/")
+    for index in range(len(parts)):
+        prefix = "/".join(parts[: index + 1])
+        if any(_glob_match(prefix, rule) for rule in rules):
+            return True
+    return False
+
+
+def _included(relative: str, rules: tuple[str, ...]) -> bool:
+    return any(_glob_match(relative, rule) for rule in rules)
+
+
+def _glob_match(relative: str, pattern: str) -> bool:
+    if "/" not in pattern and "**" not in pattern:
+        return fnmatch.fnmatchcase(relative.rsplit("/", 1)[-1], pattern)
+    return _parts_match(relative.split("/"), [part for part in pattern.split("/") if part])
+
+
+def _parts_match(segments: list[str], parts: list[str]) -> bool:
+    def match(segment_index: int, part_index: int) -> bool:
+        if part_index == len(parts):
+            return segment_index == len(segments)
+        if parts[part_index] == "**":
+            if match(segment_index, part_index + 1):
+                return True
+            return segment_index < len(segments) and match(segment_index + 1, part_index)
+        if segment_index >= len(segments):
+            return False
+        if fnmatch.fnmatchcase(segments[segment_index], parts[part_index]):
+            return match(segment_index + 1, part_index + 1)
+        return False
+
+    return match(0, 0)
+
+
+def _with_ancestors(members: list[str]) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for relative in members:
+        parts = relative.split("/")
+        for index in range(1, len(parts)):
+            parent = "/".join(parts[:index])
+            if parent in seen or parent == IDENTITY_FILENAME or parent.endswith("/" + IDENTITY_FILENAME):
+                continue
+            seen.add(parent)
+            ordered.append(parent)
+        if relative not in seen:
+            seen.add(relative)
+            ordered.append(relative)
+    return ordered
+
+
 def _tar_create(root: Path) -> list[str]:
     # Permissions are stored by default. Symlinks are archived as symlinks.
     # A file named secret.key is skipped wherever it sits in the tree.
@@ -261,6 +415,45 @@ def _tar_create(root: Path) -> list[str]:
         f"*/{name}",
         ".",
     ]
+
+
+def _tar_filtered(root: Path, listing: Path) -> list[str]:
+    # Exclude has to precede --files-from. GNU tar treats options after that
+    # list as unused and exits with an error.
+    name = IDENTITY_FILENAME
+    return [
+        _gnu_tar(),
+        "--format=posix",
+        "--create",
+        "--file=-",
+        "--directory",
+        os.fspath(root),
+        "--exclude",
+        name,
+        "--exclude",
+        f"*/{name}",
+        "--no-recursion",
+        "--null",
+        "--files-from",
+        os.fspath(listing),
+    ]
+
+
+def _discard_paths(paths: list[Path]) -> None:
+    for path in paths:
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            path.unlink(missing_ok=True)
+
+
+def _write_private(path: Path, payload: bytes) -> None:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.write(fd, payload)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def _tar_extract(destination: Path) -> list[str]:
