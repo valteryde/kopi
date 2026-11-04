@@ -1,0 +1,100 @@
+{% extends "base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% macro shown(name) -%}
+{{ form[name].value() if form[name].value() is not none else "" }}
+{%- endmacro %}
+
+{% macro field_error(name) %}
+{% if form[name].errors %}
+<p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form[name].errors[0] }}</p>
+{% endif %}
+{% endmacro %}
+
+{% block title %}Users · Kopi{% endblock %}
+
+{% block main %}
+{{ ui.page_head("Users", "users", "Admins change sources, targets, and links. Viewers can read runs, restores, and the audit log.") }}
+<div class="panel user-form">
+    <div class="detail">
+        <h2>{{ ui.icon("user-plus") }} New user</h2>
+        <form method="post" action="{{ url('users') }}" autocomplete="off">
+            {{ csrf_input }}
+            {% for error in form.non_field_errors() %}
+            <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+            {% endfor %}
+            <div class="user-fields">
+                <label class="stack">
+                    <span>{{ ui.icon("user") }} Name</span>
+                    <input type="text" name="name" value="{{ shown('name') }}" autocomplete="off">
+                    {{ field_error("name") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("sign-in") }} Login</span>
+                    <input type="text" name="login" value="{{ shown('login') }}" autocapitalize="none" spellcheck="false" autocomplete="off">
+                    {{ field_error("login") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("lock-key") }} Password</span>
+                    <input type="password" name="password" autocomplete="new-password">
+                    {{ field_error("password") }}
+                </label>
+                <div class="stack">
+                    <span>{{ ui.icon("shield") }} Role</span>
+                    <div class="radio">
+                        <input type="radio" name="role" id="role-admin" value="admin"{% if form["role"].value() == "admin" %} checked{% endif %}>
+                        <label for="role-admin">{{ ui.icon("shield-check") }} Admin</label>
+                    </div>
+                    <div class="radio">
+                        <input type="radio" name="role" id="role-viewer" value="viewer"{% if form["role"].value() == "viewer" %} checked{% endif %}>
+                        <label for="role-viewer">{{ ui.icon("eye") }} Viewer</label>
+                    </div>
+                    {{ field_error("role") }}
+                </div>
+            </div>
+            <div class="detail-actions">
+                <button type="submit" class="btn primary">{{ ui.icon("user-plus") }} Add user</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="panel">
+    <table>
+        <thead>
+            <tr>
+                <th>{{ ui.icon("user") }} Name</th>
+                <th>{{ ui.icon("sign-in") }} Login</th>
+                <th>{{ ui.icon("shield") }} Role</th>
+            </tr>
+        </thead>
+        <tbody id="user-rows">
+            {% for row in rows %}
+            <tr>
+                <td>{{ ui.icon("user") }} {{ row.name }}</td>
+                <td class="mono">{{ row.login }}</td>
+                <td>{{ ui.icon(row.role_icon) }} {{ row.role }}{% if row.you %} · you{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="roles">
+    <section class="panel">
+        <h2>{{ ui.icon("shield-check") }} Admin</h2>
+        <ul>
+            <li>{{ ui.icon("database") }} Sources, targets, and links</li>
+            <li>{{ ui.icon("play") }} Run now, and restore</li>
+            <li>{{ ui.icon("user-plus") }} Adding users</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>{{ ui.icon("eye") }} Viewer</h2>
+        <ul>
+            <li>{{ ui.icon("clock-counter-clockwise") }} Backup history</li>
+            <li>{{ ui.icon("arrow-counter-clockwise") }} Restores</li>
+            <li>{{ ui.icon("scroll") }} The audit log</li>
+            <li>{{ ui.icon("eye-slash") }} Secrets stay hidden</li>
+        </ul>
+    </section>
+</div>
+{% endblock %}

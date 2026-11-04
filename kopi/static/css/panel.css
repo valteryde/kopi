@@ -182,6 +182,13 @@ th .ph { margin-right: 4px; }
     align-items: center;
 }
 
+.user-form { margin-bottom: 16px; }
+.user-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+}
+
 .roles {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -225,6 +232,6 @@ th .ph { margin-right: 4px; }
 }
 
 @media (max-width: 1080px) {
-    .layout, .mail-grid, .roles { grid-template-columns: 1fr; }
+    .layout, .mail-grid, .roles, .user-fields { grid-template-columns: 1fr; }
     .span-2 { grid-column: auto; }
 }
