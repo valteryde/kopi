@@ -1,17 +1,32 @@
-"""Run history, the live card, and the one-second status poll.
+"""Run history, the live card, and restore.
 
 `/runs/` selects the newest run. The inspect column shows the result, size,
 checksum, object, and log. A running selection also shows the live card.
-`poll.js` is included only then, and it reads that run's status URL.
+`poll.js` is included only then. A finished run that has an object offers
+restore to an admin. The dialog posts, and plaintext is written only at the
+destination the admin named.
 """
+
+import os
+import re
+import tempfile
+from pathlib import Path
 
 from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from kopi.audit import format_size
+from kopi.access import is_admin, require_admin
+from kopi.audit import format_size, note_restore
+from kopi.child import _storage
+from kopi.identity import IDENTITY_FILENAME, IdentityError, decrypt_secret, load_identity
 from kopi.models import Run, Source
+from kopi.pipeline import PipelineError, _write_marker, restore_folder
+from kopi.postgres import restore_database
+from kopi.settings import data_directory, work_directory
+from kopi.storage import StorageError, parse_object_key
 
 _MONTHS = (
     "Jan",
@@ -35,6 +50,16 @@ _PHASES = (
     ("upload", "Upload", "cloud-arrow-up", "Moved while uploading"),
     ("post", "Post", "file-code", "Moved during the post script"),
 )
+
+_NOTE = "restore_note"
+_ERROR = "restore_error"
+_CHECKSUM = re.compile(r"[0-9a-f]{64}")
+_SEGMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,80}")
+_DATABASE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,62}")
+
+
+class RestoreError(Exception):
+    pass
 
 
 def runs(request):
@@ -64,21 +89,42 @@ def run_status(request, pk):
     return response
 
 
+@require_admin
+@require_POST
+def restore_run(request, pk):
+    run = get_object_or_404(_runs(), pk=pk)
+    if not _restorable(run):
+        request.session[_ERROR] = "This run has no object to restore."
+        return redirect("run", run.pk)
+    try:
+        destination = _perform(run, request.POST.get("destination", ""))
+    except RestoreError as exc:
+        request.session[_ERROR] = str(exc)
+        return redirect("run", run.pk)
+    note_restore(request.user, run.link.source.name, destination)
+    request.session[_NOTE] = f"Restored {run.link.source.name} to {destination}."
+    return redirect("run", run.pk)
+
+
 def _render(request, selected):
+    admin = is_admin(request.user)
     chosen = None
     rows = []
     for run in _runs():
         if run.pk == selected:
             chosen = run
-        rows.append(_table_row(run, selected))
+        rows.append(_table_row(run, selected, admin))
     live = _live(chosen) if chosen is not None and chosen.status == Run.Status.RUNNING else None
     return render(
         request,
         "runs.jinja",
         {
             "rows": rows,
-            "detail": _detail(chosen) if chosen is not None else None,
+            "detail": _detail(chosen, admin) if chosen is not None else None,
             "live": live,
+            "dialog": any(row["restore"] for row in rows),
+            "note": request.session.pop(_NOTE, ""),
+            "error": request.session.pop(_ERROR, ""),
         },
     )
 
@@ -87,7 +133,7 @@ def _runs():
     return Run.objects.select_related("link__source", "link__target").order_by("-created_at", "-pk")
 
 
-def _table_row(run: Run, selected) -> dict:
+def _table_row(run: Run, selected, admin: bool) -> dict:
     label, icon, tone = _result(run)
     running = run.status == Run.Status.RUNNING
     return {
@@ -104,10 +150,11 @@ def _table_row(run: Run, selected) -> dict:
         "result_icon": icon,
         "tone": tone,
         "spin": running,
+        "restore": _restore_button(run) if admin and _restorable(run) else None,
     }
 
 
-def _detail(run: Run) -> dict:
+def _detail(run: Run, admin: bool) -> dict:
     label, icon, tone = _result(run)
     running = run.status == Run.Status.RUNNING
     return {
@@ -125,6 +172,9 @@ def _detail(run: Run) -> dict:
             _marked("Checksum", "fingerprint", run.checksum, prefix="sha256 "),
             _marked("Object", "file-lock", run.object_name),
         ],
+        "restore": _restore_button(run) if admin and _restorable(run) else None,
+        "closed": run.status in {Run.Status.PENDING, Run.Status.RUNNING},
+        "failed_kept": run.status == Run.Status.FAILED and _restorable(run),
     }
 
 
@@ -154,6 +204,165 @@ def _live(run: Run) -> dict:
             for key, name, phase_icon, phase_caption in _PHASES
         ],
     }
+
+
+def _restore_button(run: Run) -> dict:
+    source = run.link.source
+    kind = "folder" if source.kind == Source.Kind.FOLDER else "database"
+    return {
+        "action": reverse("run-restore", args=[run.pk]),
+        "kind": kind,
+        "name": source.name,
+        "object": run.object_name,
+        "size": _size(run),
+        "sum": f"sha256 {run.checksum}",
+        "dest": _suggested(source),
+    }
+
+
+def _restorable(run: Run) -> bool:
+    if run.status not in {Run.Status.SUCCEEDED, Run.Status.FAILED}:
+        return False
+    if run.size is None or not run.object_name:
+        return False
+    return _CHECKSUM.fullmatch(run.checksum or "") is not None
+
+
+def _suggested(source: Source) -> str:
+    if source.kind == Source.Kind.FOLDER and _SEGMENT.fullmatch(source.name):
+        return f"/restore/{source.name}"
+    if source.kind != Source.Kind.POSTGRES:
+        return ""
+    name = f"{source.pg_database}_restore"
+    if _DATABASE.fullmatch(source.pg_database) and _DATABASE.fullmatch(name):
+        return name
+    return ""
+
+
+def _open_storage(target, identity):
+    return _storage(target, identity)
+
+
+def _perform(run: Run, raw: str) -> str:
+    source = run.link.source
+    destination = _destination(source, raw)
+    _require_object(run)
+    identity = _load_identity()
+    try:
+        storage = _open_storage(run.link.target, identity)
+    except IdentityError as exc:
+        raise RestoreError("Could not read the target credentials.") from exc
+    root = work_directory()
+    root.mkdir(parents=True, exist_ok=True)
+    directory = Path(tempfile.mkdtemp(prefix="restore-", dir=root))
+    try:
+        ciphertext = directory / "payload.age"
+        try:
+            storage.get(run.object_name, ciphertext)
+        except StorageError as exc:
+            raise RestoreError("Could not download the object.") from exc
+        try:
+            # The upload stores the ciphertext and deletes the marker.
+            _write_marker(ciphertext, str(run.pk), int(run.size), run.checksum)
+            if source.kind == Source.Kind.FOLDER:
+                restore_folder(ciphertext, identity, destination)
+            elif source.kind == Source.Kind.POSTGRES:
+                _restore_database(source, identity, ciphertext, str(destination), directory / "tmp")
+            else:
+                raise RestoreError("Could not restore this backup.")
+        except RestoreError:
+            raise
+        except (PipelineError, OSError) as exc:
+            raise RestoreError("Could not restore this backup.") from exc
+    finally:
+        _remove_tree(directory)
+    return os.fspath(destination)
+
+
+def _restore_database(source, identity, ciphertext, database: str, tmpdir: Path) -> None:
+    try:
+        password = decrypt_secret(identity, source.pg_password)
+    except IdentityError as exc:
+        raise RestoreError("Could not read the database password.") from exc
+    tmpdir.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(tmpdir, 0o700)
+    restore_database(
+        ciphertext,
+        identity,
+        binary=source.pg_dump_binary,
+        host=source.pg_host,
+        port=source.pg_port,
+        user=source.pg_user,
+        database=database,
+        password=password,
+        tmpdir=tmpdir,
+    )
+
+
+def _destination(source: Source, raw: str):
+    text = raw.strip()
+    if source.kind == Source.Kind.POSTGRES:
+        if _DATABASE.fullmatch(text) is None:
+            raise RestoreError("Name a database.")
+        return text
+    if source.kind != Source.Kind.FOLDER:
+        raise RestoreError("Could not restore this backup.")
+    return _folder_destination(text)
+
+
+def _folder_destination(text: str) -> Path:
+    if not text or any(ord(char) < 32 for char in text):
+        raise RestoreError("Name a folder path.")
+    path = Path(text)
+    if not path.is_absolute() or path.is_symlink():
+        raise RestoreError("Name an absolute path." if not path.is_absolute() else "Name a directory.")
+    try:
+        resolved = path.resolve()
+    except OSError as exc:
+        raise RestoreError("Name a folder path.") from exc
+    if resolved == Path("/") or (resolved.exists() and not resolved.is_dir()):
+        raise RestoreError("Name a directory.")
+    data = data_directory().resolve()
+    work = work_directory().resolve()
+    if _within(resolved, data) or _within(resolved, work):
+        raise RestoreError("That path is inside the Kopi data directory.")
+    return path
+
+
+def _within(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def _require_object(run: Run) -> None:
+    try:
+        parsed = parse_object_key(run.object_name)
+    except StorageError as exc:
+        raise RestoreError("Could not restore this backup.") from exc
+    if parsed.checksum != run.checksum:
+        raise RestoreError("Could not restore this backup.")
+
+
+def _load_identity():
+    try:
+        return load_identity(data_directory() / IDENTITY_FILENAME)
+    except IdentityError as exc:
+        raise RestoreError("Could not read secret.key.") from exc
+
+
+def _remove_tree(path: Path) -> None:
+    try:
+        if path.is_symlink() or not path.is_dir():
+            path.unlink(missing_ok=True)
+            return
+        for child in list(path.iterdir()):
+            _remove_tree(child)
+        path.rmdir()
+    except OSError:
+        return
 
 
 def _cell(key, icon, value, *, tone="", mono=False, spin=False, megabytes=""):
@@ -229,5 +438,6 @@ def _when(moment) -> str:
 urlpatterns = [
     path("runs/", runs, name="runs"),
     path("runs/<int:pk>/status/", run_status, name="run-status"),
+    path("runs/<int:pk>/restore/", restore_run, name="run-restore"),
     path("runs/<int:pk>/", run_detail, name="run"),
 ]

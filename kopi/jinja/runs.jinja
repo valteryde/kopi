@@ -1,16 +1,29 @@
 {% extends "base.jinja" %}
 {% import "macros.jinja" as ui %}
 
+{% macro restore_button(restore, primary=false) -%}
+<button type="button" class="btn {% if primary %}primary{% else %}small{% endif %}" data-open-restore data-action="{{ restore.action }}" data-kind="{{ restore.kind }}" data-name="{{ restore.name }}" data-object="{{ restore.object }}" data-size="{{ restore.size }}" data-sum="{{ restore.sum }}" data-dest="{{ restore.dest }}">{{ ui.icon("arrow-counter-clockwise") }} Restore</button>
+{%- endmacro %}
+
 {% block title %}Runs · Kopi{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ static('css/live.css') }}">
+{% if dialog %}
+<link rel="stylesheet" href="{{ static('css/modal.css') }}">
+{% endif %}
 {% endblock %}
 
 {% block main %}
 {% call ui.page_head("Runs", "clock-counter-clockwise", "A run is one execution of a link.") %}
     {{ ui.search_field("find-runs", "Search runs", "Search runs", "#run-rows tr", "run") }}
 {% endcall %}
+{% if note %}
+<p class="action-note" id="action-note">{{ ui.icon("arrow-counter-clockwise") }} <span>{{ note }}</span></p>
+{% endif %}
+{% if error %}
+<p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+{% endif %}
 {% if detail %}<div class="layout">{% endif %}
 {% if live %}
 <article class="panel live span-2" data-status-url="{{ live.status_url }}" data-phases="{{ live.phase_keys }}">
@@ -70,7 +83,7 @@
                     {% if row.spin %}<i class="ph ph-circle-notch spin"></i>{% else %}{{ ui.icon(row.result_icon) }}{% endif %}
                     {% if row.current and row.spin %}<span data-phase-label>{{ row.result }}</span>{% else %}{{ row.result }}{% endif %}
                 </td>
-                <td></td>
+                <td>{% if row.restore %}{{ restore_button(row.restore) }}{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -88,6 +101,17 @@
             <div class="v{% if row.mono %} mono{% endif %}{% if row.tone %} {{ row.tone }}{% endif %}">{% if row.megabytes %}<span data-mb>{{ row.megabytes }}</span> MB{% elif row.spin %}<span data-phase-label>{{ row.value }}</span>{% else %}{{ row.value }}{% endif %}</div>
         </div>
         {% endfor %}
+        {% if detail.closed %}
+        <p class="hint">{{ ui.icon("info") }} Restore stays closed until the upload finishes.</p>
+        {% endif %}
+        {% if detail.failed_kept %}
+        <p class="hint">{{ ui.icon("info") }} The run is failed. The ciphertext is still there to restore.</p>
+        {% endif %}
+        {% if detail.restore %}
+        <div class="detail-actions">
+            {{ restore_button(detail.restore, primary=true) }}
+        </div>
+        {% endif %}
         <div class="group">
             <div class="group-label">Log</div>
             <div class="log">{{ detail.log }}</div>
@@ -96,11 +120,37 @@
 </div>
 </div>
 {% endif %}
+{% if dialog %}
+<div id="backdrop" hidden>
+    <form class="modal" id="restore-form" method="post" action="" role="dialog" aria-modal="true" aria-labelledby="restore-title">
+        {{ csrf_input }}
+        <h2 id="restore-title">{{ ui.icon("arrow-counter-clockwise") }} Restore <span id="restore-name"></span></h2>
+        <p class="modal-lead">Plaintext is written only at the destination you name.</p>
+        <div class="modal-meta">
+            <div>{{ ui.icon("file-lock") }} <span class="mono" id="restore-object"></span></div>
+            <div>{{ ui.icon("hard-drive") }} <span id="restore-size"></span></div>
+            <div>{{ ui.icon("fingerprint") }} <span class="mono" id="restore-sum"></span></div>
+        </div>
+        <label class="stack">
+            <span id="restore-label">{{ ui.icon("folder-open") }} Folder path</span>
+            <input id="restore-dest" name="destination" type="text" autocomplete="off" spellcheck="false" required>
+        </label>
+        <p class="hint" id="restore-hint">{{ ui.icon("info") }} Files are mode 0600. Directories are mode 0700.</p>
+        <div class="actions">
+            <button type="button" class="btn" id="restore-cancel">{{ ui.icon("x") }} Cancel</button>
+            <button type="submit" class="btn primary" id="restore-go">{{ ui.icon("arrow-counter-clockwise") }} Restore</button>
+        </div>
+    </form>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script type="module" src="{{ static('js/filter.js') }}"></script>
 {% if live %}
 <script type="module" src="{{ static('js/poll.js') }}"></script>
+{% endif %}
+{% if dialog %}
+<script type="module" src="{{ static('js/restore.js') }}"></script>
 {% endif %}
 {% endblock %}

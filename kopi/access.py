@@ -73,7 +73,7 @@ def _nav(request):
     current = match.url_name if match else ""
     running = Run.objects.filter(status=Run.Status.RUNNING).count()
     items = [
-        ("runs", "clock-counter-clockwise", "Runs", {"runs", "run"}, running),
+        ("runs", "clock-counter-clockwise", "Runs", {"runs", "run", "run-restore"}, running),
         ("sources", "database", "Sources", {"sources", "source", "source-new"}, 0),
         ("targets", "cloud", "Targets", {"targets", "target", "target-new"}, 0),
         ("links", "link", "Links", {"links", "link", "link-new", "link-run"}, 0),

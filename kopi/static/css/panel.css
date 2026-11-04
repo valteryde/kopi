@@ -180,8 +180,10 @@ th .ph { margin-right: 4px; }
     font-weight: 600;
     display: flex;
     gap: 8px;
-    align-items: center;
+    align-items: flex-start;
 }
+.action-note .ph { margin-top: 2px; }
+.action-note span { min-width: 0; overflow-wrap: anywhere; }
 
 .user-form { margin-bottom: 16px; }
 .user-fields {

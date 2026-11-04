@@ -39,9 +39,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
     font-size: 13px;
 }
 .modal-meta .ph { color: var(--muted); }
+.modal-meta .mono { min-width: 0; overflow-wrap: anywhere; }
 
 .modal .actions {
     display: flex;
