@@ -34,7 +34,10 @@ from kopi.schedule import is_due
 from kopi.settings import BASE_DIR, data_directory, work_directory
 
 DEFAULT_SLOTS = 1
+# `tick` stays at 0 unless a caller passes a floor. The worker process uses
+# `configured_disk_floor`, which defaults to 64 MiB.
 DEFAULT_DISK_FLOOR = 0
+CONFIGURED_DISK_FLOOR = 64 * 1024 * 1024
 
 _BUSY = (Run.Status.PENDING, Run.Status.RUNNING)
 
@@ -131,6 +134,21 @@ def _claim_next(now: datetime) -> Run | None:
     return Run.objects.get(pk=run_id)
 
 
+def configured_disk_floor(environ=None) -> int:
+    """Free bytes required before a new claim. `KOPI_DISK_FLOOR=0` turns it off."""
+    source = os.environ if environ is None else environ
+    raw = source.get("KOPI_DISK_FLOOR")
+    if raw is None or not raw.strip():
+        return CONFIGURED_DISK_FLOOR
+    try:
+        value = int(raw.strip(), 10)
+    except ValueError as exc:
+        raise ValueError("KOPI_DISK_FLOOR must be a number of bytes") from exc
+    if value < 0:
+        raise ValueError("KOPI_DISK_FLOOR must be a number of bytes")
+    return value
+
+
 def _has_room(work_dir: Path, disk_floor: int) -> bool:
     work_dir.mkdir(parents=True, exist_ok=True)
     return shutil.disk_usage(work_dir).free >= disk_floor
@@ -223,6 +241,7 @@ def serve(
                     now(),
                     child=child,
                     work_dir=work_directory(),
+                    disk_floor=configured_disk_floor(),
                     claimable=lambda: not stopping,
                     settled=settled,
                 )

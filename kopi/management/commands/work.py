@@ -10,13 +10,17 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from kopi.child import reconcile_open
-from kopi.worker import Children, serve
+from kopi.worker import Children, configured_disk_floor, serve
 
 
 class Command(BaseCommand):
     help = "Supervise backup runs."
 
     def handle(self, *args, **options):
+        try:
+            configured_disk_floor()
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
         children = Children()
         held = serve(
             children.hand,

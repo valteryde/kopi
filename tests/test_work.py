@@ -15,7 +15,7 @@ from django.utils import timezone
 from ward import raises, test
 
 from kopi.models import Channel, Link, Run, Source, Target
-from kopi.worker import serve, tick, worker_lock_path
+from kopi.worker import configured_disk_floor, serve, tick, worker_lock_path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANAGE = [sys.executable, str(ROOT / "manage.py"), "work"]
@@ -121,6 +121,29 @@ def _():
             serve(lambda run: None, sleep_seconds=settings.WORKER_SLEEP_SECONDS, now=timezone.now)
     assert slept == [settings.WORKER_SLEEP_SECONDS]
     assert worker_lock_path().parent == DATA_DIR
+
+
+@test("serve leaves a due link pending when free space is under the configured floor")
+def _():
+    _reset()
+    link = _link()
+    seen = []
+
+    def stop(seconds):
+        raise _Stop
+
+    with patch("kopi.worker.configured_disk_floor", return_value=10**18):
+        with patch("kopi.worker.time.sleep", stop):
+            with raises(_Stop):
+                serve(lambda run: seen.append(run.pk), sleep_seconds=1, now=timezone.now)
+    waiting = Run.objects.get(link=link)
+    assert waiting.status == Run.Status.PENDING
+    assert waiting.started_at is None
+    assert seen == []
+    assert configured_disk_floor({}) == 64 * 1024 * 1024
+    assert configured_disk_floor({"KOPI_DISK_FLOOR": "0"}) == 0
+    with raises(ValueError):
+        configured_disk_floor({"KOPI_DISK_FLOOR": "nope"})
 
 
 @test("one call of the tick does not sleep")
