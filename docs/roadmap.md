@@ -42,7 +42,7 @@ Done when an admin can configure a folder and a database, watch the megabytes mo
 
 ## Phase 4 — Operate
 
-Retention, failure mail, and the digest. HTTPS settings, `ALLOWED_HOSTS`, cookie flags, and the explicit plain-HTTP opt-in, so the app process is deployable before it is packaged.
+Retention, failure mail, and the digest. The digest is the heartbeat: monthly by default, and the Mail screen can change that cadence. HTTPS settings, `ALLOWED_HOSTS`, cookie flags, and the explicit plain-HTTP opt-in, so the app process is deployable before it is packaged.
 
 Done when a failed run sends mail, a quiet installation still sends the digest, and old backups are deleted by the link's rule.
 
