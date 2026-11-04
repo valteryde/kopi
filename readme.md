@@ -1,6 +1,3 @@
-<p align="center">
-  <img src="docs/screenshots/sign-in.png" alt="Sign in to Kopi. The mark is a grid of green and sand squares." width="440">
-</p>
 
 # Kopi
 
