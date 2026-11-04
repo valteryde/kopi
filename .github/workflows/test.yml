@@ -1,0 +1,159 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ward:
+    name: ward
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install age and zstd
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends age zstd
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Hermetic Ward tests
+        run: uv run ward --tags "not integration and not image"
+
+  live:
+    name: live
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start Postgres and Garage
+        run: docker compose up -d
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends age zstd curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Wait for Postgres and Garage
+        run: |
+          python3 - <<'PY'
+          import json
+          import subprocess
+          import time
+
+          def rows():
+              result = subprocess.run(
+                  ["docker", "compose", "ps", "-a", "--format", "json"],
+                  capture_output=True,
+                  text=True,
+                  timeout=15,
+              )
+              if result.returncode != 0:
+                  return []
+              text = result.stdout.strip()
+              if not text:
+                  return []
+              if text.startswith("["):
+                  parsed = json.loads(text)
+                  return parsed if isinstance(parsed, list) else [parsed]
+              return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+          def ready(found):
+              by = {row.get("Service"): row for row in found}
+              postgres = by.get("postgres") or {}
+              garage = by.get("garage") or {}
+              init = by.get("garage-init") or {}
+              try:
+                  exit_code = int(init.get("ExitCode"))
+              except (TypeError, ValueError):
+                  exit_code = None
+              return (
+                  postgres.get("State") == "running"
+                  and postgres.get("Health") == "healthy"
+                  and garage.get("State") == "running"
+                  and garage.get("Health") == "healthy"
+                  and init.get("State") == "exited"
+                  and exit_code == 0
+              )
+
+          for _ in range(90):
+              try:
+                  found = rows()
+              except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+                  found = []
+              if ready(found):
+                  raise SystemExit(0)
+              time.sleep(2)
+          raise SystemExit("Postgres and Garage were not ready")
+          PY
+
+      - name: Integration tests
+        run: |
+          uv run python - <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          from tests.test_harness import compose_is_down
+          if compose_is_down():
+              raise SystemExit("Compose is not up")
+          PY
+          uv run ward --tags integration
+
+      - name: Start the image
+        run: |
+          harness/image-cert.sh
+          docker compose --profile app up -d --build
+          uv run python - <<'PY'
+          import sys
+          import time
+          sys.path.insert(0, ".")
+          from tests.test_image import image_is_down
+          for _ in range(60):
+              if not image_is_down():
+                  raise SystemExit(0)
+              time.sleep(5)
+          raise SystemExit("https://127.0.0.1:8443/ did not return 200")
+          PY
+
+      - name: Image tests
+        run: |
+          uv run python - <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          from tests.test_image import image_is_down
+          if image_is_down():
+              raise SystemExit("the image is not answering")
+          PY
+          uv run ward --tags image
+
+      - name: Compose logs
+        if: failure()
+        run: docker compose --profile app logs --no-color
