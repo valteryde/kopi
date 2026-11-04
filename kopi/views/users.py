@@ -8,10 +8,14 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 from django.urls import path
+from django.views.decorators.http import require_POST
 
 from kopi.access import display_name, ensure_roles, require_admin, role_of
-from kopi.audit import note_user_created
+from kopi.accounts import OFFER_SECRET_KEY
+from kopi.audit import note_key_replaced, note_user_created
 from kopi.forms.users import UserForm
+from kopi.identity import IdentityError
+from kopi.rekey import RekeyError, replace_identity
 
 
 @require_admin
@@ -51,7 +55,21 @@ def _store(request, form: UserForm):
     return user
 
 
-def _render(request, form: UserForm):
+@require_admin
+@require_POST
+def replace_key(request):
+    if request.POST.get("kept") != "yes":
+        return _render(request, UserForm(), key_error="Keep a copy of the current key first.")
+    try:
+        replace_identity()
+    except (RekeyError, IdentityError):
+        return _render(request, UserForm(), key_error="Could not replace secret.key.")
+    note_key_replaced(request.user)
+    request.session[OFFER_SECRET_KEY] = True
+    return redirect("login")
+
+
+def _render(request, form: UserForm, key_error=""):
     current = request.user.pk
     rows = []
     for user in User.objects.all():
@@ -66,9 +84,10 @@ def _render(request, form: UserForm):
             }
         )
     rows.sort(key=lambda row: (row["name"].casefold(), row["login"].casefold()))
-    return render(request, "users.jinja", {"form": form, "rows": rows})
+    return render(request, "users.jinja", {"form": form, "rows": rows, "key_error": key_error})
 
 
 urlpatterns = [
     path("users/", users, name="users"),
+    path("users/key/", replace_key, name="user-key"),
 ]

@@ -1,6 +1,3 @@
-from pathlib import Path
-
-from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
@@ -22,7 +19,8 @@ from kopi.accounts import (
 )
 from kopi.audit import note_key, note_login, note_setup
 from kopi.forms.accounts import LoginForm, SetupForm, first_error
-from kopi.identity import IDENTITY_FILENAME, IdentityError, load_identity
+from kopi.identity import IDENTITY_FILENAME, IdentityError
+from kopi.rekey import open_identity
 
 
 @login_not_required
@@ -129,9 +127,8 @@ def secret_key(request):
     """The age identity, offered once in the session that created it."""
     if not request.session.get(OFFER_SECRET_KEY):
         raise Http404
-    path = Path(settings.DATA_DIR) / IDENTITY_FILENAME
     try:
-        identity = load_identity(path)
+        identity = open_identity()
     except IdentityError as exc:
         raise Http404 from exc
     del request.session[OFFER_SECRET_KEY]

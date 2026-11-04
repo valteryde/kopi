@@ -14,10 +14,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from kopi.audit import format_size, note_failure_mail
-from kopi.identity import IDENTITY_FILENAME, decrypt_secret, load_identity
+from kopi.identity import decrypt_secret
 from kopi.models import Channel, Link, Run
+from kopi.rekey import open_identity
 from kopi.schedule import digest_due, next_digest_at
-from kopi.settings import data_directory
 
 Sender = Callable[[Channel, str, str], None]
 
@@ -233,7 +233,7 @@ def _reason(run: Run) -> str:
 def _password(channel: Channel) -> str:
     if not channel.password:
         return ""
-    identity = load_identity(data_directory() / IDENTITY_FILENAME)
+    identity = open_identity()
     return decrypt_secret(identity, channel.password)
 
 

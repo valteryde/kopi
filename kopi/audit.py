@@ -8,6 +8,7 @@ from kopi.models import AuditEvent
 LOGIN = "login"
 SETUP = "setup"
 KEY = "key"
+KEY_REPLACED = "key_replaced"
 RUN_STARTED = "run_started"
 RUN_FINISHED = "run_finished"
 RUN_FAILED = "run_failed"
@@ -27,6 +28,7 @@ ICONS = {
     LOGIN: "sign-in",
     SETUP: "check-circle",
     KEY: "key",
+    KEY_REPLACED: "key",
     RUN_STARTED: "play",
     RUN_FINISHED: "check",
     RUN_FAILED: "x",
@@ -56,6 +58,14 @@ def note_setup(user) -> None:
 
 def note_key(user) -> None:
     _user(user, KEY, "Key generated · offered for download once")
+
+
+def note_key_replaced(user) -> None:
+    _user(
+        user,
+        KEY_REPLACED,
+        "Key replaced · offered for download once. Objects written with the previous key stay readable only with that key",
+    )
 
 
 def note_source_created(user, name: str) -> None:

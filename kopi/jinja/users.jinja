@@ -14,7 +14,7 @@
 {% block title %}Users · Kopi{% endblock %}
 
 {% block main %}
-{{ ui.page_head("Users", "users", "Admins change sources, targets, links, and mail. Viewers can read runs, mail, restores, and the audit log.") }}
+{{ ui.page_head("Users", "users", "Admins change sources, targets, links, mail, and the key. Viewers can read runs, mail, restores, and the audit log.") }}
 <div class="panel user-form">
     <div class="detail">
         <h2>{{ ui.icon("user-plus") }} New user</h2>
@@ -78,12 +78,31 @@
         </tbody>
     </table>
 </div>
+<div class="panel user-form">
+    <div class="detail">
+        <h2>{{ ui.icon("key") }} Replace secret.key</h2>
+        <p class="hint">{{ ui.icon("key") }} Objects already in the bucket stay readable only with the current key. Download that key and keep it. Passwords stored here are re-encrypted. The new key is offered once.</p>
+        <form method="post" action="{{ url('user-key') }}">
+            {{ csrf_input }}
+            {% if key_error %}
+            <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ key_error }}</p>
+            {% endif %}
+            <label class="stack">
+                <span><input type="checkbox" name="kept" value="yes"> I have a copy of the current key</span>
+            </label>
+            <div class="detail-actions">
+                <button type="submit" class="btn">{{ ui.icon("key") }} Replace secret.key</button>
+            </div>
+        </form>
+    </div>
+</div>
 <div class="roles">
     <section class="panel">
         <h2>{{ ui.icon("shield-check") }} Admin</h2>
         <ul>
             <li>{{ ui.icon("database") }} Sources, targets, and links</li>
             <li>{{ ui.icon("envelope") }} The mail channel</li>
+            <li>{{ ui.icon("key") }} Replacing secret.key</li>
             <li>{{ ui.icon("play") }} Run now, and restore</li>
             <li>{{ ui.icon("user-plus") }} Adding users</li>
         </ul>

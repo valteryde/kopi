@@ -15,10 +15,10 @@ from django.utils import timezone
 from kopi.access import is_admin
 from kopi.audit import format_size, note_mail_changed
 from kopi.forms.mail import MailForm
-from kopi.identity import IDENTITY_FILENAME, IdentityError, encrypt_secret, load_identity
+from kopi.identity import IdentityError, encrypt_secret
 from kopi.models import Channel, Source
 from kopi.notify import digest_label, digest_summary, format_when, link_digests
-from kopi.settings import data_directory
+from kopi.rekey import open_identity
 
 
 def mail(request):
@@ -69,7 +69,7 @@ def _store(request, channel: Channel | None, form: MailForm):
 
 def _ciphertext(secret: str) -> str | None:
     try:
-        identity = load_identity(data_directory() / IDENTITY_FILENAME)
+        identity = open_identity()
         return encrypt_secret(identity, secret)
     except IdentityError:
         return None

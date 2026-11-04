@@ -18,7 +18,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from kopi.audit import note_run_failed, note_run_finished, note_run_started
-from kopi.identity import IDENTITY_FILENAME, Identity, decrypt_secret, load_identity
+from kopi.identity import Identity, decrypt_secret
+from kopi.rekey import open_identity
 from kopi.models import Run, Source
 from kopi.pdeath import popen_kwargs, watch_parent
 from kopi.pipeline import (
@@ -31,7 +32,7 @@ from kopi.pipeline import (
 )
 from kopi.retention import apply_retention
 from kopi.postgres import archive_database
-from kopi.settings import data_directory, work_directory
+from kopi.settings import work_directory
 from kopi.storage import S3Storage, StorageError, object_key
 
 LOG_CAP = 1024 * 1024
@@ -173,7 +174,7 @@ class _Log:
 def run_supervised(run_id: int) -> None:
     """One run, in this process, armed so a dead worker kills the tools."""
     watch_parent()
-    identity = load_identity(data_directory() / IDENTITY_FILENAME)
+    identity = open_identity()
     run = _load(run_id)
     execute(
         run_id,
@@ -318,7 +319,7 @@ def reconcile_open(run_ids: list[int]) -> None:
     ]
     if not pending:
         return
-    identity = load_identity(data_directory() / IDENTITY_FILENAME)
+    identity = open_identity()
     for run_id in pending:
         run = _load(run_id)
         if run.status != Run.Status.RUNNING:

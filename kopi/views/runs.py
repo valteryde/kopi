@@ -21,7 +21,8 @@ from django.views.decorators.http import require_POST
 from kopi.access import is_admin, require_admin
 from kopi.audit import format_size, note_restore
 from kopi.child import _storage
-from kopi.identity import IDENTITY_FILENAME, IdentityError, decrypt_secret, load_identity
+from kopi.identity import IdentityError, decrypt_secret
+from kopi.rekey import open_identity
 from kopi.models import Run, Source
 from kopi.pipeline import PipelineError, _write_marker, restore_folder
 from kopi.postgres import restore_database
@@ -364,7 +365,7 @@ def _require_object(run: Run) -> None:
 
 def _load_identity():
     try:
-        return load_identity(data_directory() / IDENTITY_FILENAME)
+        return open_identity()
     except IdentityError as exc:
         raise RestoreError("Could not read secret.key.") from exc
 

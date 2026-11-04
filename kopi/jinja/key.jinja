@@ -5,7 +5,7 @@
 {% block subtitle %}Save secret.key{% endblock %}
 
 {% block card %}
-<p class="hint">{{ ui.icon("key") }} Offered once. Keep it outside any folder you back up.</p>
+<p class="hint">{{ ui.icon("key") }} Offered once. Keep it outside any folder you back up. Objects already stored stay readable only with the key that wrote them.</p>
 <form method="post" action="{{ url('secret-key') }}">
     {{ csrf_input }}
     <button type="submit" class="btn primary">{{ ui.icon("download") }} Download secret.key</button>

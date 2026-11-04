@@ -55,7 +55,7 @@ def _():
     assert "The audit log" in body
     assert "Secrets stay hidden" in body
     assert "The mail channel" in body
-    assert "Replacing secret.key" not in body
+    assert "Replacing secret.key" in body
     assert "· you" in body
     assert f">{admin.get_username()}<" in body
 
