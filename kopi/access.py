@@ -56,15 +56,16 @@ def _nav(request):
     match = getattr(request, "resolver_match", None)
     current = match.url_name if match else ""
     items = (
-        ("runs", "clock-counter-clockwise", "Runs"),
-        ("audit", "scroll", "Audit"),
+        ("runs", "clock-counter-clockwise", "Runs", {"runs"}),
+        ("sources", "database", "Sources", {"sources", "source", "source-new"}),
+        ("audit", "scroll", "Audit", {"audit"}),
     )
     return [
         {
             "href": reverse(name),
             "icon": icon,
             "label": label,
-            "current": name == current,
+            "current": current in names,
         }
-        for name, icon, label in items
+        for name, icon, label, names in items
     ]

@@ -1,0 +1,126 @@
+{% extends "base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% macro shown(field) -%}
+{{ field.value() if field.value() is not none else "" }}
+{%- endmacro %}
+
+{% macro text_field(icon, label, name, placeholder="") %}
+<label class="stack">
+    <span>{{ ui.icon(icon) }} {{ label }}</span>
+    <input type="text" name="{{ name }}" value="{{ shown(form[name]) }}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}>
+    {% if form[name].errors %}
+    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form[name].errors[0] }}</p>
+    {% endif %}
+</label>
+{% endmacro %}
+
+{% macro rules_field(icon, label, name, placeholder) %}
+<label class="stack">
+    <span>{{ ui.icon(icon) }} {{ label }}</span>
+    <textarea name="{{ name }}" rows="3" placeholder="{{ placeholder }}">{{ shown(form[name]) }}</textarea>
+    {% if form[name].errors %}
+    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form[name].errors[0] }}</p>
+    {% endif %}
+</label>
+{% endmacro %}
+
+{% block title %}Sources · Kopi{% endblock %}
+
+{% block main %}
+{% call ui.page_head("Sources", "database", "A source is one Postgres database or one folder tree.") %}
+    {{ ui.search_field("find-sources", "Search sources", "Search sources", "#source-rows .pick", "source") }}
+    {% if can_edit %}
+    <a class="btn" href="{{ url('source-new') }}">{{ ui.icon("plus") }} New source</a>
+    {% endif %}
+{% endcall %}
+<div class="layout">
+    <div class="panel" id="source-rows">
+        {% for pick in picks %}
+        {{ ui.pick(pick.href, pick.icon, pick.name, pick.sub, pick.sub_icon, pick.current) }}
+        {% endfor %}
+        {{ ui.empty_line("source", "No sources match.") }}
+    </div>
+    <div class="panel inspect">
+        {% if mode == "empty" %}
+        <div class="detail">
+            <h2>{{ ui.icon("database") }} Nothing here yet</h2>
+        </div>
+        {% elif mode == "detail" %}
+        <div class="detail">
+            <h2>{{ ui.icon(detail.icon) }} {{ detail.title }}</h2>
+            {% for row in detail.rows %}
+            <div class="kv">{{ ui.icon(row.icon) }}<div class="k">{{ row.key }}</div><div class="v{% if row.mono %} mono{% endif %}">{% if row.marked %}{{ ui.icon("check") }} {% endif %}{{ row.value }}</div></div>
+            {% endfor %}
+            <p class="hint">{{ ui.icon(detail.hint_icon) }} {{ detail.hint }}</p>
+        </div>
+        {% else %}
+        <div class="detail">
+            {% if mode == "new" %}
+            <h2>{{ ui.icon("plus") }} New source</h2>
+            <div class="seg">
+                <a class="{% if kind == 'postgres' %}is-on{% endif %}" href="{{ url('source-new') }}?kind=postgres">{{ ui.icon("database") }} Postgres</a>
+                <a class="{% if kind == 'folder' %}is-on{% endif %}" href="{{ url('source-new') }}?kind=folder">{{ ui.icon("folder") }} Folder</a>
+            </div>
+            {% else %}
+            <h2>{{ ui.icon("database" if kind == "postgres" else "folder") }} {{ source.name }}</h2>
+            {% endif %}
+            <form method="post" action="{% if mode == 'new' %}{{ url('source-new') }}{% else %}{{ url('source', args=[source.pk]) }}{% endif %}" autocomplete="off">
+                {{ csrf_input }}
+                {% if mode == "new" %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+                {% for error in form.non_field_errors() %}
+                <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+                {% endfor %}
+                {% if kind == "postgres" %}
+                {{ text_field("tag", "Name", "name", "billing-db") }}
+                {{ text_field("globe", "Host", "pg_host", "db.internal") }}
+                {{ text_field("plugs", "Port", "pg_port", "5432") }}
+                {{ text_field("table", "Database", "pg_database", "billing") }}
+                {{ text_field("user", "User", "pg_user", "kopi") }}
+                <label class="stack">
+                    <span>{{ ui.icon("lock-key") }} Password</span>
+                    <input type="password" name="pg_password" autocomplete="new-password" placeholder="{% if mode == 'edit' %}Leave blank to keep it{% else %}Stored as ciphertext{% endif %}">
+                    {% if form["pg_password"].errors %}
+                    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form["pg_password"].errors[0] }}</p>
+                    {% elif password_set %}
+                    <p class="hint">{{ ui.icon("check") }} Set. Not shown.</p>
+                    {% endif %}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("terminal-window") }} Dump binary</span>
+                    <select name="pg_dump_binary">
+                        {% for path, label in binaries %}
+                        <option value="{{ path }}"{% if form["pg_dump_binary"].value() == path %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form["pg_dump_binary"].errors %}
+                    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form["pg_dump_binary"].errors[0] }}</p>
+                    {% elif not binaries %}
+                    <p class="hint">{{ ui.icon("warning") }} No pg_dump binary was found on PATH.</p>
+                    {% endif %}
+                </label>
+                <p class="hint">{{ ui.icon("info") }} The backup is a logical dump, one database.</p>
+                {% else %}
+                {{ text_field("tag", "Name", "name", "uploads") }}
+                {{ text_field("folder-open", "Root path", "root_path", "/srv/uploads") }}
+                {{ rules_field("plus", "Include", "include_rules", "Empty includes the whole tree") }}
+                {{ rules_field("minus", "Exclude", "exclude_rules", "*.tmp") }}
+                {% if mode == "new" %}
+                <p class="hint">{{ ui.icon("key") }} A path is a path inside the container. secret.key is never part of a backup.</p>
+                {% else %}
+                <p class="hint">{{ ui.icon("key") }} secret.key is skipped if this tree would include it. Symlinks are stored as symlinks.</p>
+                {% endif %}
+                {% endif %}
+                <div class="detail-actions">
+                    <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static('js/filter.js') }}"></script>
+{% endblock %}

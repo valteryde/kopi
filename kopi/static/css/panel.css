@@ -145,6 +145,8 @@ th .ph { margin-right: 4px; }
     align-items: flex-start;
 }
 .hint .ph { margin-top: 2px; }
+.hint.error { color: var(--ink); }
+.kv .v.mono { white-space: pre-wrap; }
 
 .queued {
     margin: 12px 0 0;

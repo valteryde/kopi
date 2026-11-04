@@ -21,6 +21,10 @@
     vertical-align: -0.125em;
 }
 
+.ph.ph-archive:before {
+    content: "\e00c";
+}
+
 .ph.ph-check:before {
     content: "\e182";
 }
@@ -37,8 +41,16 @@
     content: "\e1a0";
 }
 
+.ph.ph-cloud:before {
+    content: "\e1aa";
+}
+
 .ph.ph-cpu:before {
     content: "\e610";
+}
+
+.ph.ph-database:before {
+    content: "\e1de";
 }
 
 .ph.ph-download:before {
@@ -49,8 +61,36 @@
     content: "\e220";
 }
 
+.ph.ph-folder:before {
+    content: "\e24a";
+}
+
+.ph.ph-folder-open:before {
+    content: "\e256";
+}
+
+.ph.ph-folder-plus:before {
+    content: "\e258";
+}
+
+.ph.ph-globe:before {
+    content: "\e288";
+}
+
 .ph.ph-hard-drive:before {
     content: "\e29e";
+}
+
+.ph.ph-hard-drives:before {
+    content: "\e2a0";
+}
+
+.ph.ph-identification-badge:before {
+    content: "\e6f6";
+}
+
+.ph.ph-info:before {
+    content: "\e2ce";
 }
 
 .ph.ph-key:before {
@@ -73,8 +113,32 @@
     content: "\e30c";
 }
 
+.ph.ph-map-pin:before {
+    content: "\e316";
+}
+
+.ph.ph-minus:before {
+    content: "\e32a";
+}
+
+.ph.ph-path:before {
+    content: "\e39c";
+}
+
+.ph.ph-pencil-simple:before {
+    content: "\e3b4";
+}
+
 .ph.ph-play:before {
     content: "\e3d0";
+}
+
+.ph.ph-plugs:before {
+    content: "\eb56";
+}
+
+.ph.ph-plus:before {
+    content: "\e3d4";
 }
 
 .ph.ph-pulse:before {
@@ -95,6 +159,18 @@
 
 .ph.ph-sign-out:before {
     content: "\e42a";
+}
+
+.ph.ph-table:before {
+    content: "\e476";
+}
+
+.ph.ph-tag:before {
+    content: "\e478";
+}
+
+.ph.ph-terminal-window:before {
+    content: "\eae8";
 }
 
 .ph.ph-user:before {

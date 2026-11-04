@@ -31,10 +31,10 @@
 <p class="empty" data-empty="{{ name }}" hidden>{{ icon("magnifying-glass") }} {{ text }}</p>
 {% endmacro %}
 
-{% macro pick(href, icon_name, title, sub="", current=false) %}
-<a class="pick{% if current %} is-on{% endif %}" href="{{ href }}">
+{% macro pick(href, icon_name, title, sub="", sub_icon="", current=false) %}
+<a class="pick{% if current %} is-on{% endif %}" href="{{ href }}"{% if current %} aria-current="true"{% endif %}>
     <span class="pick-main">{{ icon(icon_name) }} <strong>{{ title }}</strong></span>
-    {% if sub %}<span class="pick-sub">{{ sub }}</span>{% endif %}
+    {% if sub %}<span class="pick-sub">{% if sub_icon %}{{ icon(sub_icon) }} {% endif %}{{ sub }}</span>{% endif %}
 </a>
 {% endmacro %}
 

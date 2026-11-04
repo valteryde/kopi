@@ -1,4 +1,4 @@
-"""Audit rows for sign-in, setup, and runs.
+"""Audit rows for sign-in, setup, sources, and runs.
 
 The sentence is stored when the event happens. Job stdout stays on the run.
 """
@@ -11,6 +11,8 @@ KEY = "key"
 RUN_STARTED = "run_started"
 RUN_FINISHED = "run_finished"
 RUN_FAILED = "run_failed"
+SOURCE_CREATED = "source_created"
+SOURCE_CHANGED = "source_changed"
 
 ICONS = {
     LOGIN: "sign-in",
@@ -19,6 +21,8 @@ ICONS = {
     RUN_STARTED: "play",
     RUN_FINISHED: "check",
     RUN_FAILED: "x",
+    SOURCE_CREATED: "folder-plus",
+    SOURCE_CHANGED: "pencil-simple",
 }
 
 WORKER_NAME = "Worker"
@@ -34,6 +38,14 @@ def note_setup(user) -> None:
 
 def note_key(user) -> None:
     _user(user, KEY, "Key generated · offered for download once")
+
+
+def note_source_created(user, name: str) -> None:
+    _user(user, SOURCE_CREATED, f"Source created · {name}")
+
+
+def note_source_changed(user, name: str) -> None:
+    _user(user, SOURCE_CHANGED, f"Source changed · {name}")
 
 
 def note_run_started(source: str, target: str) -> None:

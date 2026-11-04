@@ -5,6 +5,7 @@ a mode 0600 pgpass file and deletes it before returning.
 """
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -53,6 +54,68 @@ def restore_binary_for(dump_binary: str) -> str:
     if sibling.is_file():
         return os.fspath(sibling)
     return "pg_restore"
+
+
+def find_dump_binaries() -> list[tuple[str, str]]:
+    """Executable `pg_dump` names on `PATH`, as `(path, label)`."""
+    found: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for directory in os.environ.get("PATH", "").split(os.pathsep):
+        if not directory:
+            continue
+        root = Path(directory)
+        if not root.is_dir():
+            continue
+        try:
+            names = sorted(path.name for path in root.iterdir())
+        except OSError:
+            continue
+        for name in names:
+            if not _is_dump_name(name):
+                continue
+            path = root / name
+            if len(os.fspath(path)) > 255 or not _is_executable(path):
+                continue
+            real = os.path.realpath(path)
+            if real in seen:
+                continue
+            seen.add(real)
+            found.append((os.fspath(path), _dump_label(path)))
+    return found
+
+
+def _is_dump_name(name: str) -> bool:
+    if name == "pg_dump":
+        return True
+    if not name.startswith("pg_dump"):
+        return False
+    rest = name.removeprefix("pg_dump")
+    return rest.startswith("-") or rest[:1].isdigit()
+
+
+def _is_executable(path: Path) -> bool:
+    try:
+        return path.is_file() and os.access(path, os.X_OK)
+    except OSError:
+        return False
+
+
+def _dump_label(path: Path) -> str:
+    try:
+        result = subprocess.run(
+            [os.fspath(path), "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return path.name
+    match = re.search(r"(\d+)", result.stdout)
+    if match is None:
+        return path.name
+    return f"pg_dump {match.group(1)}"
 
 
 def write_pgpass(

@@ -64,12 +64,15 @@ input[type="text"],
 input[type="password"],
 input[type="number"],
 input[type="email"],
-select {
+select,
+textarea {
     width: 100%;
     border: 1px solid var(--rule);
     background: #fff;
     padding: 8px 10px;
     color: var(--ink);
+    font: inherit;
+    resize: vertical;
 }
 
 .search input[type="search"] {
