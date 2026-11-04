@@ -116,7 +116,7 @@ def _claim_next(now: datetime) -> Run | None:
     with transaction.atomic():
         running_links = Run.objects.filter(status=Run.Status.RUNNING).values("link_id")
         candidate = (
-            Run.objects.filter(status=Run.Status.PENDING)
+            Run.objects.filter(status=Run.Status.PENDING, link__enabled=True)
             .exclude(link_id__in=running_links)
             .order_by("created_at", "pk")
             .first()

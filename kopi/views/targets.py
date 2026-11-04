@@ -4,19 +4,19 @@
 the key-value list. Both credentials are age ciphertext and are not rendered.
 """
 
-from pathlib import Path
-
-from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
+from django.views.decorators.http import require_POST
 
 from kopi.access import is_admin, require_admin
-from kopi.audit import note_target_changed, note_target_created
+from kopi.audit import note_target_changed, note_target_created, note_target_removed
 from kopi.forms.targets import TargetForm
-from kopi.identity import IDENTITY_FILENAME, IdentityError, encrypt_secret, load_identity
+from kopi.identity import IdentityError, encrypt_secret
+from kopi.rekey import open_identity
 from kopi.models import Target
 
 _HINT = "Object names stay readable. They carry the source, the time, and a checksum."
@@ -105,13 +105,33 @@ def _apply(target: Target, cleaned: dict, access: str, secret: str) -> None:
 
 def _ciphertext(secret: str) -> str | None:
     try:
-        identity = load_identity(Path(settings.DATA_DIR) / IDENTITY_FILENAME)
+        identity = open_identity()
         return encrypt_secret(identity, secret)
     except IdentityError:
         return None
 
 
-def _render(request, *, selected, target, form):
+@require_admin
+@require_POST
+def remove_target(request, pk):
+    row = get_object_or_404(Target, pk=pk)
+    name = row.name
+    try:
+        with transaction.atomic():
+            row.delete()
+            note_target_removed(request.user, name)
+    except ProtectedError:
+        return _render(
+            request,
+            selected=row.pk,
+            target=row,
+            form=_blank_form(row),
+            remove_error="Remove the links that use this target first.",
+        )
+    return redirect("targets")
+
+
+def _render(request, *, selected, target, form, remove_error=""):
     picks = [_pick(row, selected) for row in Target.objects.order_by("name", "pk")]
     if form is not None:
         mode = "new" if target is None else "edit"
@@ -135,6 +155,7 @@ def _render(request, *, selected, target, form):
             "hint": _HINT,
             "access_set": bool(target and target.access_key_id),
             "secret_set": bool(target and target.secret_access_key),
+            "remove_error": remove_error,
         },
     )
 
@@ -217,5 +238,6 @@ def _values(target: Target) -> tuple:
 urlpatterns = [
     path("targets/", targets, name="targets"),
     path("targets/new/", new_target, name="target-new"),
+    path("targets/<int:pk>/remove/", remove_target, name="target-remove"),
     path("targets/<int:pk>/", target_detail, name="target"),
 ]

@@ -93,6 +93,7 @@ class Link(models.Model):
         default=DEFAULT_SCRIPT_TIMEOUT_SECONDS,
         validators=[MinValueValidator(1)],
     )
+    enabled = models.BooleanField(default=True)
 
     class Meta:
         constraints = [

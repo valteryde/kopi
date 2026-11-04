@@ -65,6 +65,7 @@
                 <th>{{ ui.icon("user") }} Name</th>
                 <th>{{ ui.icon("sign-in") }} Login</th>
                 <th>{{ ui.icon("shield") }} Role</th>
+                <th></th>
             </tr>
         </thead>
         <tbody id="user-rows">
@@ -72,11 +73,23 @@
             <tr>
                 <td>{{ ui.icon("user") }} {{ row.name }}</td>
                 <td class="mono">{{ row.login }}</td>
-                <td>{{ ui.icon(row.role_icon) }} {{ row.role }}{% if row.you %} · you{% endif %}</td>
+                <td>{{ ui.icon(row.role_icon) }} {{ row.role }}{% if row.you %} · you{% endif %}{% if not row.active %} · disabled{% endif %}</td>
+                <td>
+                    {% if not row.you %}
+                    <form method="post" action="{{ url('user-active', args=[row.pk]) }}">
+                        {{ csrf_input }}
+                        <input type="hidden" name="active" value="{{ '1' if not row.active else '0' }}">
+                        <button type="submit" class="btn small">{% if row.active %}{{ ui.icon("prohibit") }} Disable{% else %}{{ ui.icon("check") }} Enable{% endif %}</button>
+                    </form>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {% if error %}
+    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+    {% endif %}
 </div>
 <div class="panel user-form">
     <div class="detail">
@@ -104,7 +117,7 @@
             <li>{{ ui.icon("envelope") }} The mail channel</li>
             <li>{{ ui.icon("key") }} Replacing secret.key</li>
             <li>{{ ui.icon("play") }} Run now, and restore</li>
-            <li>{{ ui.icon("user-plus") }} Adding users</li>
+            <li>{{ ui.icon("user-plus") }} Adding and disabling users</li>
         </ul>
     </section>
     <section class="panel">

@@ -201,3 +201,18 @@ def _():
     assert Run.objects.get(pk=first.pk).status == Run.Status.RUNNING
     assert Run.objects.get(pk=first.pk).started_at == NOW
     assert Run.objects.get(pk=second.pk).status == Run.Status.PENDING
+
+
+@test("a retired link is not due and a pending row for it is not claimed")
+def _():
+    _reset()
+    link = _link()
+    link.enabled = False
+    link.save(update_fields=["enabled"])
+    pending = _run_at(link, datetime(2026, 11, 3, 8, 0, tzinfo=timezone.utc))
+    seen: list[int] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        tick(NOW, child=_record(seen), work_dir=Path(tmp))
+    assert is_due(link, NOW) is False
+    assert Run.objects.get(pk=pending.pk).status == Run.Status.PENDING
+    assert seen == []

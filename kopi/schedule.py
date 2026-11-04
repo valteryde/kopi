@@ -45,6 +45,8 @@ def is_due(link: Link, now: datetime) -> bool:
     """
     if now.tzinfo is None or now.tzinfo.utcoffset(now) is None:
         raise ValueError("now must be timezone-aware")
+    if not link.enabled:
+        return False
 
     instant = _latest_instant(link.cadence, link.timezone, now)
     if instant is None:

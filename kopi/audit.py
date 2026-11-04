@@ -19,7 +19,14 @@ TARGET_CHANGED = "target_changed"
 LINK_CREATED = "link_created"
 LINK_CHANGED = "link_changed"
 LINK_QUEUED = "link_queued"
+LINK_REMOVED = "link_removed"
+LINK_RETIRED = "link_retired"
+LINK_RESUMED = "link_resumed"
+SOURCE_REMOVED = "source_removed"
+TARGET_REMOVED = "target_removed"
 USER_CREATED = "user_created"
+USER_DISABLED = "user_disabled"
+USER_ENABLED = "user_enabled"
 RESTORE = "restore"
 MAIL_CHANGED = "mail_changed"
 FAILURE_MAIL = "failure_mail"
@@ -39,7 +46,14 @@ ICONS = {
     LINK_CREATED: "link",
     LINK_CHANGED: "pencil-simple",
     LINK_QUEUED: "play",
+    LINK_REMOVED: "trash",
+    LINK_RETIRED: "prohibit",
+    LINK_RESUMED: "play",
+    SOURCE_REMOVED: "trash",
+    TARGET_REMOVED: "trash",
     USER_CREATED: "user-plus",
+    USER_DISABLED: "prohibit",
+    USER_ENABLED: "check",
     RESTORE: "arrow-counter-clockwise",
     MAIL_CHANGED: "envelope",
     FAILURE_MAIL: "envelope",
@@ -76,12 +90,20 @@ def note_source_changed(user, name: str) -> None:
     _user(user, SOURCE_CHANGED, f"Source changed · {name}")
 
 
+def note_source_removed(user, name: str) -> None:
+    _user(user, SOURCE_REMOVED, f"Source removed · {name}")
+
+
 def note_target_created(user, name: str) -> None:
     _user(user, TARGET_CREATED, f"Target created · {name}")
 
 
 def note_target_changed(user, name: str) -> None:
     _user(user, TARGET_CHANGED, f"Target changed · {name}")
+
+
+def note_target_removed(user, name: str) -> None:
+    _user(user, TARGET_REMOVED, f"Target removed · {name}")
 
 
 def note_link_created(user, source: str, target: str) -> None:
@@ -96,8 +118,28 @@ def note_link_queued(user, source: str, target: str) -> None:
     _user(user, LINK_QUEUED, f"Run queued · {source} → {target}")
 
 
+def note_link_removed(user, source: str, target: str) -> None:
+    _user(user, LINK_REMOVED, f"Link removed · {source} → {target}")
+
+
+def note_link_retired(user, source: str, target: str) -> None:
+    _user(user, LINK_RETIRED, f"Link retired · {source} → {target}")
+
+
+def note_link_resumed(user, source: str, target: str) -> None:
+    _user(user, LINK_RESUMED, f"Link resumed · {source} → {target}")
+
+
 def note_user_created(user, login: str, role: str) -> None:
     _user(user, USER_CREATED, f"User created · {login} · {role}")
+
+
+def note_user_disabled(user, login: str) -> None:
+    _user(user, USER_DISABLED, f"User disabled · {login}")
+
+
+def note_user_enabled(user, login: str) -> None:
+    _user(user, USER_ENABLED, f"User enabled · {login}")
 
 
 def note_restore(user, source: str, destination: str) -> None:

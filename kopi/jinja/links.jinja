@@ -33,7 +33,7 @@
         {% for pick in picks %}
         <a class="pick{% if pick.current %} is-on{% endif %}" href="{{ pick.href }}"{% if pick.current %} aria-current="true"{% endif %}>
             <span class="pick-main">{{ ui.icon(pick.source_icon) }} <strong>{{ pick.source }}</strong> {{ ui.icon("arrow-right") }} {{ ui.icon("cloud") }} <strong>{{ pick.target }}</strong></span>
-            <span class="pick-sub">{{ ui.icon("clock") }} {{ pick.cadence }} {{ ui.icon(pick.retention_icon) }} {{ pick.retention }}{% if pick.state == "running" %} <span class="run">{{ ui.icon("play") }} Running</span>{% elif pick.state == "pending" %} {{ ui.icon("check") }} Queued{% endif %}</span>
+            <span class="pick-sub">{{ ui.icon("clock") }} {{ pick.cadence }} {{ ui.icon(pick.retention_icon) }} {{ pick.retention }}{% if pick.state == "running" %} <span class="run">{{ ui.icon("play") }} Running</span>{% elif pick.state == "pending" %} {{ ui.icon("check") }} Queued{% elif pick.state == "retired" %} {{ ui.icon("prohibit") }} Retired{% endif %}</span>
         </a>
         {% endfor %}
         {{ ui.empty_line("link", "No links match.") }}
@@ -63,6 +63,9 @@
                 <div class="kv">{{ ui.icon("terminal-window") }}<div class="k">Pre</div><div class="v{% if detail.pre_mono %} mono{% endif %}">{{ detail.pre }}</div></div>
                 <div class="kv">{{ ui.icon("file-code") }}<div class="k">Post</div><div class="v{% if detail.post_mono %} mono{% endif %}">{{ detail.post }}</div></div>
             </div>
+            {% if not detail.enabled %}
+            <p class="hint">{{ ui.icon("prohibit") }} Retired. The runs stay. The schedule does not start another.</p>
+            {% endif %}
             {{ activity_line() }}
         </div>
         {% else %}
@@ -158,9 +161,24 @@
             <form method="post" action="{{ url('link-run', args=[link.pk]) }}">
                 {{ csrf_input }}
                 <div class="detail-actions">
-                    <button type="submit" class="btn primary"{% if activity %} disabled{% endif %}>{{ ui.icon("play") }} Run now</button>
+                    <button type="submit" class="btn primary"{% if activity or not link.enabled %} disabled{% endif %}>{{ ui.icon("play") }} Run now</button>
                 </div>
             </form>
+            <form method="post" action="{{ url('link-remove', args=[link.pk]) }}">
+                {{ csrf_input }}
+                <div class="detail-actions">
+                    {% if not link.enabled %}
+                    <button type="submit" class="btn" name="action" value="resume">{{ ui.icon("play") }} Resume</button>
+                    {% elif has_runs %}
+                    <button type="submit" class="btn" name="action" value="retire">{{ ui.icon("prohibit") }} Retire</button>
+                    {% else %}
+                    <button type="submit" class="btn" name="action" value="remove">{{ ui.icon("trash") }} Remove</button>
+                    {% endif %}
+                </div>
+            </form>
+            {% if not link.enabled %}
+            <p class="hint">{{ ui.icon("prohibit") }} Retired. The runs stay. The schedule does not start another.</p>
+            {% endif %}
             {{ activity_line() }}
             {% endif %}
         </div>

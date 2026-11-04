@@ -59,6 +59,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "kopi.views.accounts.ActiveUserMiddleware",
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
 ]
 

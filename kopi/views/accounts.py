@@ -83,6 +83,9 @@ def _login(request):
             if is_paused(name):
                 error = "This account is paused."
                 status = 403
+            elif _disabled(name):
+                error = "This account is disabled."
+                status = 403
             else:
                 user = authenticate(request, username=name, password=password)
                 if user is None:
@@ -106,6 +109,25 @@ def _login(request):
     )
     response.status_code = status
     return response
+
+
+def _disabled(username: str) -> bool:
+    user = User.objects.filter(username=username).first()
+    return user is not None and not user.is_active
+
+
+class ActiveUserMiddleware:
+    """End a session whose account has been disabled."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated and not user.is_active:
+            auth_logout(request)
+            return redirect("login")
+        return self.get_response(request)
 
 
 def _safe_next(request) -> str:

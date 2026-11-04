@@ -4,19 +4,19 @@
 the key-value list. The password is age ciphertext and is not rendered.
 """
 
-from pathlib import Path
-
-from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
+from django.views.decorators.http import require_POST
 
 from kopi.access import is_admin, require_admin
-from kopi.audit import note_source_changed, note_source_created
+from kopi.audit import note_source_changed, note_source_created, note_source_removed
 from kopi.forms.sources import FolderSourceForm, PostgresSourceForm
-from kopi.identity import IDENTITY_FILENAME, IdentityError, encrypt_secret, load_identity
+from kopi.identity import IdentityError, encrypt_secret
+from kopi.rekey import open_identity
 from kopi.models import Source
 from kopi.postgres import find_dump_binaries
 
@@ -133,7 +133,7 @@ def _apply(source: Source, kind: str, cleaned: dict, password: str) -> None:
 
 def _ciphertext(secret: str) -> str | None:
     try:
-        identity = load_identity(Path(settings.DATA_DIR) / IDENTITY_FILENAME)
+        identity = open_identity()
     except IdentityError:
         return None
     try:
@@ -142,7 +142,30 @@ def _ciphertext(secret: str) -> str | None:
         return None
 
 
-def _render(request, *, selected, source, kind, form, binaries):
+@require_admin
+@require_POST
+def remove_source(request, pk):
+    row = get_object_or_404(Source, pk=pk)
+    name = row.name
+    try:
+        with transaction.atomic():
+            row.delete()
+            note_source_removed(request.user, name)
+    except ProtectedError:
+        binaries = _binaries(row)
+        return _render(
+            request,
+            selected=row.pk,
+            source=row,
+            kind=row.kind,
+            form=_blank_form(row, binaries=binaries),
+            binaries=binaries,
+            remove_error="Remove the links that use this source first.",
+        )
+    return redirect("sources")
+
+
+def _render(request, *, selected, source, kind, form, binaries, remove_error=""):
     labels = dict(binaries)
     picks = [_pick(row, selected, labels) for row in Source.objects.order_by("name", "pk")]
     mode = "empty"
@@ -165,6 +188,7 @@ def _render(request, *, selected, source, kind, form, binaries):
             "detail": detail,
             "binaries": binaries,
             "password_set": bool(source and source.pg_password),
+            "remove_error": remove_error,
         },
     )
 
@@ -302,5 +326,6 @@ def _values(source: Source) -> tuple:
 urlpatterns = [
     path("sources/", sources, name="sources"),
     path("sources/new/", new_source, name="source-new"),
+    path("sources/<int:pk>/remove/", remove_source, name="source-remove"),
     path("sources/<int:pk>/", source_detail, name="source"),
 ]

@@ -49,7 +49,7 @@ def _():
     assert "New user" in body
     assert "Sources, targets, and links" in body
     assert "Run now, and restore" in body
-    assert "Adding users" in body
+    assert "Adding and disabling users" in body
     assert "Backup history" in body
     assert "Restores" in body
     assert "The audit log" in body

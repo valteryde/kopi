@@ -15,7 +15,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from kopi.access import is_admin, require_admin
-from kopi.audit import note_link_changed, note_link_created, note_link_queued
+from kopi.audit import (
+    note_link_changed,
+    note_link_created,
+    note_link_queued,
+    note_link_removed,
+    note_link_resumed,
+    note_link_retired,
+)
 from kopi.forms.links import LinkForm
 from kopi.models import DEFAULT_SCRIPT_TIMEOUT_SECONDS, Link, Run, Source, Target
 
@@ -128,12 +135,46 @@ def _apply(link: Link, cleaned: dict) -> None:
 
 def _queue(request, link: Link) -> None:
     with transaction.atomic():
-        Link.objects.select_for_update().get(pk=link.pk)
-        busy = Run.objects.filter(link=link, status__in=_BUSY).exists()
+        current = Link.objects.select_for_update().get(pk=link.pk)
+        if not current.enabled:
+            return
+        busy = Run.objects.filter(link=current, status__in=_BUSY).exists()
         if busy:
             return
-        Run.objects.create(link=link, status=Run.Status.PENDING)
-        note_link_queued(request.user, link.source.name, link.target.name)
+        Run.objects.create(link=current, status=Run.Status.PENDING)
+        note_link_queued(request.user, current.source.name, current.target.name)
+
+
+@require_admin
+@require_POST
+def remove_link(request, pk):
+    row = get_object_or_404(_links(), pk=pk)
+    action = request.POST.get("action")
+    has_runs = Run.objects.filter(link=row).exists()
+    if action == "resume":
+        if not row.enabled:
+            row.enabled = True
+            row.save(update_fields=["enabled"])
+            note_link_resumed(request.user, row.source.name, row.target.name)
+        return redirect("link", row.pk)
+    if action == "retire" or (action == "remove" and has_runs):
+        _retire(request, row)
+        return redirect("link", row.pk)
+    if action == "remove" and not has_runs:
+        source = row.source.name
+        target = row.target.name
+        row.delete()
+        note_link_removed(request.user, source, target)
+        return redirect("links")
+    return redirect("link", row.pk)
+
+
+def _retire(request, link: Link) -> None:
+    if link.enabled:
+        link.enabled = False
+        link.save(update_fields=["enabled"])
+        Run.objects.filter(link=link, status=Run.Status.PENDING).delete()
+        note_link_retired(request.user, link.source.name, link.target.name)
 
 
 def _render(request, *, selected, link, form):
@@ -149,6 +190,7 @@ def _render(request, *, selected, link, form):
         mode = "empty"
         detail = None
     activity = _activity(busy.get(link.pk)) if link is not None else None
+    has_runs = Run.objects.filter(link=link).exists() if link is not None else False
     return render(
         request,
         "links.jinja",
@@ -160,6 +202,7 @@ def _render(request, *, selected, link, form):
             "link": link,
             "detail": detail,
             "activity": activity,
+            "has_runs": has_runs,
             "source_choices": list(Source.objects.order_by("name", "pk")) if form is not None else [],
             "target_choices": list(Target.objects.order_by("name", "pk")) if form is not None else [],
         },
@@ -192,7 +235,7 @@ def _pick(link: Link, selected, run: Run | None) -> dict:
         "cadence": link.cadence,
         "retention_icon": icon,
         "retention": label,
-        "state": run.status if run is not None else "",
+        "state": run.status if run is not None else ("" if link.enabled else "retired"),
         "current": link.pk == selected,
     }
 
@@ -212,6 +255,7 @@ def _detail(link: Link) -> dict:
         "pre_mono": bool(link.pre_script_path),
         "post": _hook(link.post_script_path, link.post_script_timeout, empty=False),
         "post_mono": bool(link.post_script_path),
+        "enabled": link.enabled,
     }
 
 
@@ -305,5 +349,6 @@ urlpatterns = [
     path("links/", links, name="links"),
     path("links/new/", new_link, name="link-new"),
     path("links/<int:pk>/run/", run_link, name="link-run"),
+    path("links/<int:pk>/remove/", remove_link, name="link-remove"),
     path("links/<int:pk>/", link_detail, name="link"),
 ]

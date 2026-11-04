@@ -89,6 +89,17 @@
                     <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
                 </div>
             </form>
+            {% if mode == "edit" %}
+            <form method="post" action="{{ url('target-remove', args=[target.pk]) }}">
+                {{ csrf_input }}
+                {% if remove_error %}
+                <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ remove_error }}</p>
+                {% endif %}
+                <div class="detail-actions">
+                    <button type="submit" class="btn">{{ ui.icon("trash") }} Remove</button>
+                </div>
+            </form>
+            {% endif %}
         </div>
         {% endif %}
     </div>
