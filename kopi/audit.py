@@ -20,6 +20,8 @@ LINK_CHANGED = "link_changed"
 LINK_QUEUED = "link_queued"
 USER_CREATED = "user_created"
 RESTORE = "restore"
+MAIL_CHANGED = "mail_changed"
+FAILURE_MAIL = "failure_mail"
 
 ICONS = {
     LOGIN: "sign-in",
@@ -37,6 +39,8 @@ ICONS = {
     LINK_QUEUED: "play",
     USER_CREATED: "user-plus",
     RESTORE: "arrow-counter-clockwise",
+    MAIL_CHANGED: "envelope",
+    FAILURE_MAIL: "envelope",
 }
 
 WORKER_NAME = "Worker"
@@ -88,6 +92,14 @@ def note_user_created(user, login: str, role: str) -> None:
 
 def note_restore(user, source: str, destination: str) -> None:
     _user(user, RESTORE, f"Restore · {source} → {destination}")
+
+
+def note_mail_changed(user) -> None:
+    _user(user, MAIL_CHANGED, "Notification settings changed")
+
+
+def note_failure_mail(source: str, target: str) -> None:
+    _worker(FAILURE_MAIL, f"Failure mail sent · {source} → {target}")
 
 
 def note_run_started(source: str, target: str) -> None:

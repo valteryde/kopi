@@ -244,3 +244,35 @@
 .ph.ph-x:before {
     content: "\e4f6";
 }
+
+.ph.ph-address-book:before {
+    content: "\e6f8";
+}
+
+.ph.ph-at:before {
+    content: "\e0ac";
+}
+
+.ph.ph-bell:before {
+    content: "\e0ce";
+}
+
+.ph.ph-envelope:before {
+    content: "\e214";
+}
+
+.ph.ph-envelope-simple:before {
+    content: "\e218";
+}
+
+.ph.ph-newspaper:before {
+    content: "\e344";
+}
+
+.ph.ph-paper-plane:before {
+    content: "\e394";
+}
+
+.ph.ph-sun:before {
+    content: "\e472";
+}

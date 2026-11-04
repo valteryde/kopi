@@ -148,12 +148,16 @@ class FakeStorage:
     def __init__(self) -> None:
         self._objects: dict[str, bytes] = {}
         self._fail_puts = 0
+        self._fail_deletes = 0
         self.plans: list[UploadPlan] = []
         self.part_lengths: list[list[int]] = []
         self.max_in_flight: list[int] = []
 
     def fail_next_put(self) -> None:
         self._fail_puts += 1
+
+    def fail_next_delete(self) -> None:
+        self._fail_deletes += 1
 
     def put(
         self,
@@ -220,6 +224,9 @@ class FakeStorage:
         return found
 
     def delete(self, key: str) -> None:
+        if self._fail_deletes:
+            self._fail_deletes -= 1
+            raise StorageError("delete failed")
         self._objects.pop(key, None)
 
 

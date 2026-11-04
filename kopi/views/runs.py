@@ -43,12 +43,13 @@ _MONTHS = (
     "Dec",
 )
 
-# The phases a run row stores. Retain arrives with phase 4.
+# The phases a run row stores. `poll.js` reads the keys from the page.
 _PHASES = (
     ("pre", "Pre", "terminal-window", "Moved during the pre script"),
     ("archive", "Archive", "archive", "Moved while archiving"),
     ("upload", "Upload", "cloud-arrow-up", "Moved while uploading"),
     ("post", "Post", "file-code", "Moved during the post script"),
+    ("retain", "Retain", "hourglass", "Applying the retention rule"),
 )
 
 _NOTE = "restore_note"
@@ -161,17 +162,7 @@ def _detail(run: Run, admin: bool) -> dict:
         "title": run.link.source.name,
         "icon": _source_icon(run.link.source),
         "log": run.log,
-        "rows": [
-            _cell("Result", icon, label, tone=tone, spin=running),
-            _cell(
-                "Size",
-                "hard-drive",
-                "" if running else _size(run),
-                megabytes=_megabytes(run.bytes_moved) if running else "",
-            ),
-            _marked("Checksum", "fingerprint", run.checksum, prefix="sha256 "),
-            _marked("Object", "file-lock", run.object_name),
-        ],
+        "rows": _detail_rows(run, label, icon, tone, running),
         "restore": _restore_button(run) if admin and _restorable(run) else None,
         "closed": run.status in {Run.Status.PENDING, Run.Status.RUNNING},
         "failed_kept": run.status == Run.Status.FAILED and _restorable(run),
@@ -220,7 +211,32 @@ def _restore_button(run: Run) -> dict:
     }
 
 
+def _detail_rows(run: Run, label: str, icon: str, tone: str, running: bool) -> list[dict]:
+    rows = [
+        _cell("Result", icon, label, tone=tone, spin=running),
+        _cell(
+            "Size",
+            "hard-drive",
+            "" if running else _size(run),
+            megabytes=_megabytes(run.bytes_moved) if running else "",
+        ),
+        _marked("Checksum", "fingerprint", run.checksum, prefix="sha256 "),
+        _object_cell(run),
+    ]
+    if run.failure_notified_at is not None:
+        rows.append(_cell("Mail", "envelope", "Failure mail sent"))
+    return rows
+
+
+def _object_cell(run: Run) -> dict:
+    if run.removed_by_retention:
+        return _cell("Object", "file-lock", "The retention rule removed this object.")
+    return _marked("Object", "file-lock", run.object_name)
+
+
 def _restorable(run: Run) -> bool:
+    if run.removed_by_retention:
+        return False
     if run.status not in {Run.Status.SUCCEEDED, Run.Status.FAILED}:
         return False
     if run.size is None or not run.object_name:

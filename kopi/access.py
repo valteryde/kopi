@@ -77,6 +77,7 @@ def _nav(request):
         ("sources", "database", "Sources", {"sources", "source", "source-new"}, 0),
         ("targets", "cloud", "Targets", {"targets", "target", "target-new"}, 0),
         ("links", "link", "Links", {"links", "link", "link-new", "link-run"}, 0),
+        ("mail", "envelope", "Mail", {"mail"}, 0),
         ("audit", "scroll", "Audit", {"audit"}, 0),
     ]
     user = getattr(request, "user", None)

@@ -217,24 +217,7 @@ th .ph { margin-right: 4px; }
     border-top: 1px solid var(--line);
 }
 
-.mail-grid {
-    display: grid;
-    grid-template-columns: 300px minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-}
-.mail-grid .detail { padding: 16px; }
-.mail-grid h2 {
-    margin: 0 0 14px;
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 @media (max-width: 1080px) {
-    .layout, .mail-grid, .roles, .user-fields { grid-template-columns: 1fr; }
+    .layout, .roles, .user-fields { grid-template-columns: 1fr; }
     .span-2 { grid-column: auto; }
 }

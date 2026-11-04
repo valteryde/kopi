@@ -56,7 +56,7 @@
             <div class="group">
                 <div class="group-label">Retention</div>
                 <div class="kv">{{ ui.icon(detail.retention_icon) }}<div class="k">Rule</div><div class="v">{{ detail.retention }}</div></div>
-                <p class="hint">{{ ui.icon("info") }} The rule is stored. Nothing is deleted yet.</p>
+                <p class="hint">{{ ui.icon("info") }} The worker applies this rule after each run.</p>
             </div>
             <div class="group">
                 <div class="group-label">Hooks</div>
@@ -124,7 +124,7 @@
                     </div>
                     {{ field_error("retention_days") }}
                     {{ field_error("retention") }}
-                    <p class="hint">{{ ui.icon("info") }} The rule is stored. Nothing is deleted yet.</p>
+                    <p class="hint">{{ ui.icon("info") }} The worker applies this rule after each run.</p>
                 </div>
                 <div class="group">
                     <div class="group-label">Hooks</div>

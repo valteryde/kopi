@@ -128,7 +128,7 @@ def _():
         assert pre_flag.is_file()
         assert post_flag.is_file()
         assert run.status == Run.Status.SUCCEEDED
-        assert run.phase == Run.Phase.POST
+        assert run.phase == Run.Phase.RETAIN
         assert run.checksum
         assert run.object_name.startswith(f"{run.link.source.name}/")
         assert run.object_name.endswith(run.checksum)

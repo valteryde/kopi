@@ -4,6 +4,8 @@ One tick inserts a pending row for each due link that has nothing in
 progress, then hands runs to the child. Rows already running go first.
 A new claim waits for a free slot and for free space on the work
 directory. The claim transaction commits before the child is called.
+Each tick sends failure mail and the digest before it claims. A mail
+error does not stop the claims.
 
 `serve` holds an exclusive flock on the data volume. On startup, and
 after a child exits, running rows are reconciled before any new claim.
@@ -26,6 +28,7 @@ from pathlib import Path
 from django.db import transaction
 
 from kopi.models import Link, Run
+from kopi.notify import notify
 from kopi.pdeath import PARENT_FD_ENV
 from kopi.schedule import is_due
 from kopi.settings import BASE_DIR, data_directory, work_directory
@@ -49,6 +52,7 @@ def tick(
     work_dir: Path | None = None,
     claimable: Callable[[], bool] | None = None,
     settled: Callable[[], None] | None = None,
+    send: Callable | None = None,
 ) -> None:
     """Insert due rows and hand claimed runs to `child`.
 
@@ -60,6 +64,7 @@ def tick(
     if now.tzinfo is None or now.tzinfo.utcoffset(now) is None:
         raise ValueError("now must be timezone-aware")
 
+    notify(now, send=send)
     _insert_due(now)
     running = list(
         Run.objects.filter(status=Run.Status.RUNNING).order_by("started_at", "pk")

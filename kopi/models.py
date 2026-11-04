@@ -1,4 +1,4 @@
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 DEFAULT_SCRIPT_TIMEOUT_SECONDS = 300
@@ -131,6 +131,7 @@ class Run(models.Model):
         ARCHIVE = "archive"
         UPLOAD = "upload"
         POST = "post"
+        RETAIN = "retain"
 
     link = models.ForeignKey(Link, on_delete=models.PROTECT, related_name="runs")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
@@ -143,6 +144,8 @@ class Run(models.Model):
     size = models.PositiveBigIntegerField(null=True, blank=True)
     checksum = models.CharField(max_length=64, blank=True)
     object_name = models.CharField(max_length=1024, blank=True)
+    removed_by_retention = models.BooleanField(default=False)
+    failure_notified_at = models.DateTimeField(null=True, blank=True)
     log = models.TextField(blank=True)
 
     class Meta:
@@ -196,3 +199,40 @@ class AuditEvent(models.Model):
 
     def __str__(self):
         return self.event
+
+
+class Channel(models.Model):
+    """The one SMTP channel. The row is updated in place.
+
+    `password` is age ciphertext. The digest defaults are monthly, hour 8, UTC.
+    """
+
+    class Digest(models.TextChoices):
+        MONTHLY = "monthly"
+        WEEKLY = "weekly"
+        DAILY = "daily"
+
+    host = models.CharField(max_length=255)
+    port = models.PositiveIntegerField(
+        default=587,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+    )
+    from_address = models.CharField(max_length=254)
+    recipients = models.TextField()
+    username = models.CharField(max_length=255, blank=True)
+    password = models.TextField(blank=True)
+    digest_kind = models.CharField(
+        max_length=16,
+        choices=Digest.choices,
+        default=Digest.MONTHLY,
+    )
+    digest_hour = models.PositiveSmallIntegerField(
+        default=8,
+        validators=[MinValueValidator(0), MaxValueValidator(23)],
+    )
+    timezone = models.CharField(max_length=64, default="UTC")
+    last_digest_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.host

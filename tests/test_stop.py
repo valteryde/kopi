@@ -17,7 +17,7 @@ from ward import raises, test
 
 from kopi.child import reconcile
 from kopi.identity import encrypt_secret, generate_identity
-from kopi.models import Link, Run, Source, Target
+from kopi.models import Channel, Link, Run, Source, Target
 from kopi.pipeline import marker_path
 from kopi.storage import FakeStorage
 from kopi.worker import serve
@@ -31,6 +31,7 @@ class _Stop(Exception):
 
 
 def _reset() -> None:
+    Channel.objects.all().delete()
     Run.objects.all().delete()
     Link.objects.all().delete()
     Source.objects.all().delete()

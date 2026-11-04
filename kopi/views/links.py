@@ -2,7 +2,8 @@
 
 `/links/` selects the first link. An admin gets the form. A viewer gets the
 key-value list. Run now inserts one pending row and is refused while that
-link is already pending or running. Retention is stored and not applied.
+link is already pending or running. Retention is stored here. The worker
+applies it after the post script.
 """
 
 from django.core.exceptions import PermissionDenied

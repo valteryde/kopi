@@ -174,7 +174,7 @@ def _():
     assert "Europe/Copenhagen" in seen
     assert "/hooks/thaw.sh · 45s" in seen
     assert "Not set. The backup starts immediately." in seen
-    assert "Nothing is deleted yet." in seen
+    assert "The worker applies this rule after each run." in seen
     assert 'name="cadence"' not in seen
     assert 'name="retention"' not in seen
     assert "Run now" not in seen

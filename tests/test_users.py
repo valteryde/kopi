@@ -45,8 +45,7 @@ def _():
     token_csrf = _csrf(body)
     assert "Users</h1>" in body
     assert 'class="navbtn is-on"' in body
-    assert body.index(">Audit<") < body.index(">Users<")
-    assert ">Mail<" not in body
+    assert body.index(">Links<") < body.index(">Mail<") < body.index(">Audit<") < body.index(">Users<")
     assert "New user" in body
     assert "Sources, targets, and links" in body
     assert "Run now, and restore" in body
@@ -55,7 +54,7 @@ def _():
     assert "Restores" in body
     assert "The audit log" in body
     assert "Secrets stay hidden" in body
-    assert "The mail channel" not in body
+    assert "The mail channel" in body
     assert "Replacing secret.key" not in body
     assert "· you" in body
     assert f">{admin.get_username()}<" in body
@@ -118,8 +117,12 @@ def _():
     runs_body = runs.content.decode()
     assert "Runs</h1>" in runs_body
     assert f">{name}<" in runs_body
+    assert (
+        runs_body.index(">Links<")
+        < runs_body.index(">Mail<")
+        < runs_body.index(">Audit<")
+    )
     assert ">Users<" not in runs_body
-    assert ">Mail<" not in runs_body
     refused = viewer_client.get(reverse("source-new"))
     assert refused.status_code == 403
     assert "New source" not in refused.content.decode()

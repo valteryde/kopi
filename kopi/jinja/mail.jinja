@@ -1,0 +1,134 @@
+{% extends "base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% macro shown(name) -%}
+{{ form[name].value() if form[name].value() is not none else "" }}
+{%- endmacro %}
+
+{% macro field_error(name) %}
+{% if form[name].errors %}
+<p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form[name].errors[0] }}</p>
+{% endif %}
+{% endmacro %}
+
+{% block title %}Mail · Kopi{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static('css/mail.css') }}">
+{% endblock %}
+
+{% block main %}
+{{ ui.page_head("Mail", "envelope", "Failure mail goes out for that job. The digest is the heartbeat. If it stops, something outside Kopi has to notice.") }}
+<div class="mail-grid">
+    <div class="panel">
+        <div class="detail">
+            <h2>{{ ui.icon("envelope-simple") }} Channel</h2>
+            {% if form %}
+            <form method="post" action="{{ url('mail') }}" autocomplete="off">
+                {{ csrf_input }}
+                {% for error in form.non_field_errors() %}
+                <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+                {% endfor %}
+                <label class="stack">
+                    <span>{{ ui.icon("globe") }} Host</span>
+                    <input type="text" name="host" value="{{ shown('host') }}" placeholder="smtp.fastmail.com" spellcheck="false">
+                    {{ field_error("host") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("plugs") }} Port</span>
+                    <input type="number" name="port" value="{{ shown('port') }}" min="1" max="65535">
+                    {{ field_error("port") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("at") }} From</span>
+                    <input type="email" name="from_address" value="{{ shown('from_address') }}" placeholder="kopi@example.com" spellcheck="false">
+                    {{ field_error("from_address") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("address-book") }} Recipients</span>
+                    <input type="text" name="recipients" value="{{ shown('recipients') }}" placeholder="ops@example.com, ada@example.com" spellcheck="false">
+                    {{ field_error("recipients") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("user") }} Username</span>
+                    <input type="text" name="username" value="{{ shown('username') }}" autocomplete="off" spellcheck="false">
+                    {{ field_error("username") }}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("lock-key") }} Password</span>
+                    <input type="password" name="password" autocomplete="new-password"{% if password_set %} placeholder="Leave blank to keep it"{% endif %}>
+                    {{ field_error("password") }}
+                    {% if password_set and not form["password"].errors %}
+                    <p class="hint">{{ ui.icon("check") }} Set. Not shown.</p>
+                    {% endif %}
+                </label>
+                <div class="group">
+                    <div class="group-label">Digest</div>
+                    <div class="radio">
+                        <input type="radio" name="digest" id="digest-monthly" value="monthly"{% if form["digest"].value() == "monthly" %} checked{% endif %}>
+                        <label for="digest-monthly">Monthly, on the 1st</label>
+                    </div>
+                    <div class="radio">
+                        <input type="radio" name="digest" id="digest-weekly" value="weekly"{% if form["digest"].value() == "weekly" %} checked{% endif %}>
+                        <label for="digest-weekly">Weekly, on Monday</label>
+                    </div>
+                    <div class="radio">
+                        <input type="radio" name="digest" id="digest-daily" value="daily"{% if form["digest"].value() == "daily" %} checked{% endif %}>
+                        <label for="digest-daily">Daily</label>
+                    </div>
+                    {{ field_error("digest") }}
+                    <label class="stack">
+                        <span>{{ ui.icon("clock") }} Hour</span>
+                        <input type="number" name="hour" value="{{ shown('hour') }}" min="0" max="23">
+                        {{ field_error("hour") }}
+                    </label>
+                    <label class="stack">
+                        <span>{{ ui.icon("globe") }} Timezone</span>
+                        <input type="text" name="timezone" value="{{ shown('timezone') }}" placeholder="Europe/Copenhagen">
+                        {{ field_error("timezone") }}
+                    </label>
+                </div>
+                <p class="hint">{{ ui.icon("bell") }} One message per failed run.</p>
+                <div class="detail-actions">
+                    <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
+                </div>
+            </form>
+            {% else %}
+            {% for row in rows %}
+            <div class="kv">{{ ui.icon(row.icon) }}<div class="k">{{ row.key }}</div><div class="v{% if row.mono %} mono{% endif %}">{% if row.marked %}{{ ui.icon("check") }} {% endif %}{{ row.value }}</div></div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    <div class="panel">
+        <div class="detail">
+            <h2>{{ ui.icon("newspaper") }} Last digest</h2>
+            <p class="hint digest-when">{{ ui.icon("paper-plane") }} {{ digest.summary }}</p>
+            {% if digest.rows %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{ ui.icon("link") }} Link</th>
+                        <th>{{ ui.icon("check") }} Last success</th>
+                        <th>{{ ui.icon("x") }} Last failure</th>
+                        <th class="num">{{ ui.icon("hard-drive") }} Last size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in digest.rows %}
+                    <tr>
+                        <td>{{ ui.icon(row.icon) }} {{ row.source }} {{ ui.icon("arrow-right") }} {{ ui.icon("cloud") }} {{ row.target }}</td>
+                        <td>{{ row.success }}</td>
+                        <td>{{ row.failure }}</td>
+                        <td class="num">{{ row.size }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="hint">{{ ui.icon("info") }} There are no links.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

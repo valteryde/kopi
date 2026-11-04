@@ -14,7 +14,7 @@
 {% block title %}Users · Kopi{% endblock %}
 
 {% block main %}
-{{ ui.page_head("Users", "users", "Admins change sources, targets, and links. Viewers can read runs, restores, and the audit log.") }}
+{{ ui.page_head("Users", "users", "Admins change sources, targets, links, and mail. Viewers can read runs, mail, restores, and the audit log.") }}
 <div class="panel user-form">
     <div class="detail">
         <h2>{{ ui.icon("user-plus") }} New user</h2>
@@ -83,6 +83,7 @@
         <h2>{{ ui.icon("shield-check") }} Admin</h2>
         <ul>
             <li>{{ ui.icon("database") }} Sources, targets, and links</li>
+            <li>{{ ui.icon("envelope") }} The mail channel</li>
             <li>{{ ui.icon("play") }} Run now, and restore</li>
             <li>{{ ui.icon("user-plus") }} Adding users</li>
         </ul>

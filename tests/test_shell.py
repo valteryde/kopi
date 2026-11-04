@@ -47,10 +47,10 @@ def _():
         < body.index(">Sources<")
         < body.index(">Targets<")
         < body.index(">Links<")
+        < body.index(">Mail<")
         < body.index(">Audit<")
     )
-    for label in ("Mail", "Users"):
-        assert f">{label}<" not in body
+    assert ">Users<" not in body
 
 
 @test("whitenoise serves the shell stylesheets, icon, and fonts")

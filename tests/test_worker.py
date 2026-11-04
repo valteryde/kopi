@@ -8,7 +8,7 @@ import tests.bootstrap  # noqa: F401
 from django.db import connection
 from ward import test
 
-from kopi.models import Link, Run, Source, Target
+from kopi.models import Channel, Link, Run, Source, Target
 from kopi.schedule import is_due
 from kopi.settings import BASE_DIR, work_directory
 from kopi.worker import tick
@@ -19,6 +19,7 @@ INSTANT = datetime(2026, 11, 3, 2, 0, tzinfo=timezone.utc)
 
 
 def _reset() -> None:
+    Channel.objects.all().delete()
     Run.objects.all().delete()
     Link.objects.all().delete()
     Source.objects.all().delete()

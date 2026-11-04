@@ -8,7 +8,7 @@ from django.core.management import call_command
 from django.db import IntegrityError, connection
 from ward import raises, test
 
-from kopi.identity import decrypt_secret, encrypt_secret, generate_identity
+from kopi.identity import decrypt_secret, encrypt_secret, generate_identity, load_identity
 from kopi.models import Link, Run, Source, Target
 from kopi.settings import BASE_DIR, SQLITE_BUSY_TIMEOUT, data_directory
 
@@ -131,7 +131,8 @@ def _():
 @test("credential columns store age ciphertext")
 def _():
     call_command("migrate", verbosity=0, interactive=False)
-    identity = generate_identity(DATA_DIR / "secret.key")
+    key = DATA_DIR / "secret.key"
+    identity = load_identity(key) if key.exists() and not key.is_symlink() else generate_identity(key)
     source = Source.objects.create(
         name="prod",
         kind=Source.Kind.POSTGRES,

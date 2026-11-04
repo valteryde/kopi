@@ -13,7 +13,7 @@ from django.db import connection
 from ward import test
 
 from kopi.identity import encrypt_secret, generate_identity
-from kopi.models import Link, Run, Source, Target
+from kopi.models import Channel, Link, Run, Source, Target
 
 ROOT = Path(__file__).resolve().parents[1]
 MANAGE = [sys.executable, str(ROOT / "manage.py"), "work"]
@@ -22,6 +22,7 @@ PASSWORD = "db-password-should-not-leak"
 
 
 def _reset() -> None:
+    Channel.objects.all().delete()
     Run.objects.all().delete()
     Link.objects.all().delete()
     Source.objects.all().delete()

@@ -14,7 +14,7 @@ from django.db import connection
 from django.utils import timezone
 from ward import raises, test
 
-from kopi.models import Link, Run, Source, Target
+from kopi.models import Channel, Link, Run, Source, Target
 from kopi.worker import serve, tick, worker_lock_path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +26,7 @@ class _Stop(Exception):
 
 
 def _reset() -> None:
+    Channel.objects.all().delete()
     Run.objects.all().delete()
     Link.objects.all().delete()
     Source.objects.all().delete()

@@ -1,8 +1,10 @@
-"""One run of one link: pre script, archive, upload, post script.
+"""One run of one link: pre script, archive, upload, post script, retention.
 
 Tests call `execute` directly. `reconcile` finishes a run left in `running`.
 A valid marker uploads again and does not archive again. No marker deletes
 the partial and runs the post script when the pre script had succeeded.
+Retention runs after the post script, on that same path, while the run is
+still `running`.
 """
 
 import os
@@ -27,6 +29,7 @@ from kopi.pipeline import (
     read_marker,
     start_folder_producer,
 )
+from kopi.retention import apply_retention
 from kopi.postgres import archive_database
 from kopi.settings import data_directory, work_directory
 from kopi.storage import S3Storage, StorageError, object_key
@@ -239,7 +242,15 @@ def execute(
         failure = "stalled" if ctx.stalled.is_set() else (str(exc) or "failed")
     finally:
         watcher.stop()
-    _finish_with_post(run_id, link, log, pre_ok=pre_ok, failure=failure, progress=progress)
+    _finish_with_post(
+        run_id,
+        link,
+        log,
+        pre_ok=pre_ok,
+        failure=failure,
+        progress=progress,
+        storage=storage,
+    )
 
 
 def reconcile(
@@ -293,6 +304,7 @@ def reconcile(
         pre_ok=pre_ok,
         failure=None if upload_done and failure == "incomplete archive" else failure,
         progress=progress,
+        storage=storage,
         failed_override=not upload_done or (failure not in (None, "incomplete archive")),
     )
 
@@ -475,7 +487,9 @@ def _ciphertext(marker: Marker) -> Path:
     raise PipelineError("marker is not beside a ciphertext")
 
 
-def _finish_with_post(run_id, link, log, *, pre_ok, failure, progress, failed_override=None) -> None:
+def _finish_with_post(
+    run_id, link, log, *, pre_ok, failure, progress, storage, failed_override=None
+) -> None:
     post_failed = None
     if pre_ok and link.post_script_path.strip():
         _begin(None, progress, Run.Phase.POST)
@@ -484,20 +498,35 @@ def _finish_with_post(run_id, link, log, *, pre_ok, failure, progress, failed_ov
         except HookError as exc:
             post_failed = str(exc)
             log.add(post_failed)
+    retention_error = _retain(run_id, storage, progress)
     if failure:
         log.add(failure)
     if post_failed:
         log.add("post script failed")
-    failed = post_failed is not None or failure is not None
+    if retention_error:
+        log.add(retention_error)
+    failed = post_failed is not None or failure is not None or retention_error is not None
     if failed_override is not None:
-        failed = failed_override or post_failed is not None
-    reason = " · ".join(part for part in (failure, post_failed) if part)
+        failed = failed_override or post_failed is not None or retention_error is not None
+    reason = " · ".join(part for part in (failure, post_failed, retention_error) if part)
     _finish(
         run_id,
         Run.Status.FAILED if failed else Run.Status.SUCCEEDED,
         log,
         failure=reason,
     )
+
+
+def _retain(run_id: int, storage, progress: Progress) -> str | None:
+    """Apply retention when this run stored an object. The watcher is already stopped."""
+    if not Run.objects.filter(pk=run_id).exclude(object_name="").exists():
+        return None
+    _begin(None, progress, Run.Phase.RETAIN)
+    try:
+        apply_retention(run_id, storage)
+    except Exception as exc:
+        return str(exc).strip() or "retention failed"
+    return None
 
 
 def _begin(ctx: _Context | None, progress: Progress, phase: str) -> None:

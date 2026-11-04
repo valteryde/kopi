@@ -52,6 +52,52 @@ def is_due(link: Link, now: datetime) -> bool:
     return not Run.objects.filter(link=link, created_at__gte=instant).exists()
 
 
+def digest_cron(kind: str, hour: int) -> str:
+    """Cron for a digest. Monthly is the 1st, weekly is Monday, at `hour`."""
+    clock = int(hour)
+    if kind == "daily":
+        return f"0 {clock} * * *"
+    if kind == "weekly":
+        return f"0 {clock} * * 1"
+    return f"0 {clock} 1 * *"
+
+
+def digest_due(kind: str, hour: int, zone_name: str, last_at: datetime | None, now: datetime) -> bool:
+    """Whether the digest owes its latest instant. Several missed instants are one."""
+    if now.tzinfo is None or now.tzinfo.utcoffset(now) is None:
+        raise ValueError("now must be timezone-aware")
+    instant = _latest_instant(digest_cron(kind, hour), zone_name, now)
+    if instant is None:
+        return False
+    return last_at is None or last_at < instant
+
+
+def next_digest_at(
+    kind: str,
+    hour: int,
+    zone_name: str,
+    last_at: datetime | None,
+    now: datetime,
+) -> datetime | None:
+    """When the next digest is due, in UTC. A due digest returns the instant it owes."""
+    if now.tzinfo is None or now.tzinfo.utcoffset(now) is None:
+        raise ValueError("now must be timezone-aware")
+    cadence = digest_cron(kind, hour)
+    instant = _latest_instant(cadence, zone_name, now)
+    if instant is None:
+        return None
+    if last_at is None or last_at < instant:
+        return instant
+    if not known_timezone(zone_name):
+        return None
+    local = instant.astimezone(ZoneInfo(zone_name))
+    try:
+        following = croniter(cadence, local).get_next(datetime)
+    except (CroniterError, TypeError, ValueError, OverflowError):
+        return None
+    return following.astimezone(timezone.utc)
+
+
 def _latest_instant(cadence: str, zone_name: str, now: datetime) -> datetime | None:
     """The latest cron instant at or before `now`, expressed in UTC."""
     if not known_timezone(zone_name):

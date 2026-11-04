@@ -121,7 +121,9 @@ def _():
     assert 'class="phase now" data-phase="archive"' in body
     assert 'class="phase" data-phase="upload"' in body
     assert 'class="phase" data-phase="post"' in body
-    assert 'data-phase="retain"' not in body
+    assert 'class="phase" data-phase="retain"' in body
+    assert 'data-caption="Applying the retention rule"' in body
+    assert 'data-phases="pre archive upload post retain"' in body
     assert 'data-label="Encrypt"' not in body
     assert "Moved while archiving" in body
     assert f"<strong>{source.name}</strong>" in body
