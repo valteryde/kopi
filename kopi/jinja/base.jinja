@@ -25,6 +25,7 @@
                 <a class="navbtn{% if item.current %} is-on{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
                     {{ ui.icon(item.icon) }}
                     <span>{{ item.label }}</span>
+                    {% if item.count %}<span class="navcount">{{ item.count }}</span>{% endif %}
                 </a>
                 {% endfor %}
             </div>

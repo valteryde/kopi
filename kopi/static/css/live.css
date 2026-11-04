@@ -118,6 +118,7 @@
     padding: 10px 12px;
     margin: 0 0 12px;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
     color: var(--ink);
 }
 

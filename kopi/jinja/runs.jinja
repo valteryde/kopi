@@ -3,10 +3,44 @@
 
 {% block title %}Runs · Kopi{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static('css/live.css') }}">
+{% endblock %}
+
 {% block main %}
 {% call ui.page_head("Runs", "clock-counter-clockwise", "A run is one execution of a link.") %}
     {{ ui.search_field("find-runs", "Search runs", "Search runs", "#run-rows tr", "run") }}
 {% endcall %}
+{% if detail %}<div class="layout">{% endif %}
+{% if live %}
+<article class="panel live span-2" data-status-url="{{ live.status_url }}" data-phases="{{ live.phase_keys }}">
+    <div class="live-top">
+        <div>
+            <div class="kicker"><i class="ph ph-circle-notch spin"></i> <span data-phase-label>{{ live.label }}</span></div>
+            <div class="live-link">
+                {{ ui.icon(live.source_icon) }}
+                <strong>{{ live.source }}</strong>
+                {{ ui.icon("arrow-right") }}
+                {{ ui.icon("cloud") }}
+                <strong>{{ live.target }}</strong>
+            </div>
+            <div class="live-meta">
+                <span>{{ ui.icon("clock") }} {{ live.started_label }} {{ live.started }}</span>
+                <span>{{ ui.icon("globe") }} {{ live.timezone }}</span>
+            </div>
+        </div>
+        <div class="live-num">
+            <div><strong data-mb>{{ live.megabytes }}</strong><em>MB</em></div>
+            <div class="cap">{{ ui.icon(live.caption_icon) }} <span data-phase-caption>{{ live.caption }}</span></div>
+        </div>
+    </div>
+    <div class="phases" aria-label="Phases">
+        {% for phase in live.phases %}
+        <div class="phase{% if phase.state %} {{ phase.state }}{% endif %}" data-phase="{{ phase.key }}" data-label="{{ phase.label }}" data-caption="{{ phase.caption }}">{{ ui.icon(phase.icon) }} {{ phase.label }}</div>
+        {% endfor %}
+    </div>
+</article>
+{% endif %}
 <div class="panel">
     <table>
         <thead>
@@ -18,12 +52,55 @@
                 <th aria-label="Restore"></th>
             </tr>
         </thead>
-        <tbody id="run-rows"></tbody>
+        <tbody id="run-rows">
+            {% for row in rows %}
+            <tr{% if row.current %} class="is-on"{% endif %}>
+                <td><a class="row-link" href="{{ row.href }}"{% if row.current %} aria-current="true"{% endif %}>{{ row.when }}</a></td>
+                <td>
+                    <a class="cell-link" href="{{ row.href }}">{{ ui.icon(row.source_icon) }} {{ row.source }} {{ ui.icon("arrow-right") }} {{ ui.icon("cloud") }} {{ row.target }}</a>
+                </td>
+                <td class="num">
+                    {% if row.running %}
+                    {% if row.current %}<span data-mb>{{ row.megabytes }}</span>{% else %}{{ row.megabytes }}{% endif %} MB
+                    {% else %}
+                    {{ row.size }}
+                    {% endif %}
+                </td>
+                <td{% if row.tone %} class="{{ row.tone }}"{% endif %}>
+                    {% if row.spin %}<i class="ph ph-circle-notch spin"></i>{% else %}{{ ui.icon(row.result_icon) }}{% endif %}
+                    {% if row.current and row.spin %}<span data-phase-label>{{ row.result }}</span>{% else %}{{ row.result }}{% endif %}
+                </td>
+                <td></td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
     {{ ui.empty_line("run", "No runs match.") }}
 </div>
+{% if detail %}
+<div class="panel inspect">
+    <div class="detail">
+        <h2>{{ ui.icon(detail.icon) }} {{ detail.title }}</h2>
+        {% for row in detail.rows %}
+        <div class="kv">
+            {% if row.spin %}<i class="ph ph-circle-notch spin"></i>{% else %}{{ ui.icon(row.icon) }}{% endif %}
+            <div class="k">{{ row.key }}</div>
+            <div class="v{% if row.mono %} mono{% endif %}{% if row.tone %} {{ row.tone }}{% endif %}">{% if row.megabytes %}<span data-mb>{{ row.megabytes }}</span> MB{% elif row.spin %}<span data-phase-label>{{ row.value }}</span>{% else %}{{ row.value }}{% endif %}</div>
+        </div>
+        {% endfor %}
+        <div class="group">
+            <div class="group-label">Log</div>
+            <div class="log">{{ detail.log }}</div>
+        </div>
+    </div>
+</div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script type="module" src="{{ static('js/filter.js') }}"></script>
+{% if live %}
+<script type="module" src="{{ static('js/poll.js') }}"></script>
+{% endif %}
 {% endblock %}

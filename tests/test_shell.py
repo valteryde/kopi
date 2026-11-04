@@ -5,6 +5,8 @@ from django.test import Client
 from django.urls import reverse
 from ward import test
 
+from kopi.models import Run
+
 
 def _client():
     return Client(HTTP_HOST="localhost")
@@ -20,6 +22,7 @@ def _bytes(response):
 
 @test("the runs URL returns the shell, the Kopi brand, and the Runs heading")
 def _():
+    Run.objects.all().delete()
     user, _ = User.objects.get_or_create(username="shell")
     group, _ = Group.objects.get_or_create(name="viewer")
     user.groups.add(group)
@@ -34,6 +37,8 @@ def _():
     assert 'class="lede"' in body
     assert 'id="run-rows"' in body
     assert "<td" not in body
+    assert "poll.js" not in body
+    assert "navcount" not in body
     assert ">shell<" in body
     assert "Viewer" in body
     assert 'id="sign-out"' in body

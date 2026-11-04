@@ -87,7 +87,7 @@ def _():
     assert payload == identity.read_bytes()
     assert b"AGE-SECRET-KEY-" in payload
 
-    runs = client.get(reverse("runs"))
+    runs = client.get(reverse("runs"), follow=True)
     assert runs.status_code == 200
     runs_body = runs.content.decode()
     assert "ada" in runs_body
@@ -190,7 +190,7 @@ def _():
 
     viewer_client = _client()
     viewer_client.force_login(viewer)
-    runs = viewer_client.get(reverse("runs"))
+    runs = viewer_client.get(reverse("runs"), follow=True)
     assert runs.status_code == 200
     assert "Runs</h1>" in runs.content.decode()
     refused = viewer_client.post(
@@ -203,7 +203,7 @@ def _():
 
     admin_client = _client()
     admin_client.force_login(admin)
-    page = admin_client.get(reverse("runs"))
+    page = admin_client.get(reverse("runs"), follow=True)
     accepted = admin_client.post(
         reverse("source-new"),
         {"csrfmiddlewaretoken": _csrf(page.content.decode()), "name": "docs"},

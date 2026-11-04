@@ -6,6 +6,8 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 
+from kopi.models import Run
+
 ADMIN = "admin"
 VIEWER = "viewer"
 
@@ -69,22 +71,24 @@ def operator(request):
 def _nav(request):
     match = getattr(request, "resolver_match", None)
     current = match.url_name if match else ""
+    running = Run.objects.filter(status=Run.Status.RUNNING).count()
     items = [
-        ("runs", "clock-counter-clockwise", "Runs", {"runs"}),
-        ("sources", "database", "Sources", {"sources", "source", "source-new"}),
-        ("targets", "cloud", "Targets", {"targets", "target", "target-new"}),
-        ("links", "link", "Links", {"links", "link", "link-new", "link-run"}),
-        ("audit", "scroll", "Audit", {"audit"}),
+        ("runs", "clock-counter-clockwise", "Runs", {"runs", "run"}, running),
+        ("sources", "database", "Sources", {"sources", "source", "source-new"}, 0),
+        ("targets", "cloud", "Targets", {"targets", "target", "target-new"}, 0),
+        ("links", "link", "Links", {"links", "link", "link-new", "link-run"}, 0),
+        ("audit", "scroll", "Audit", {"audit"}, 0),
     ]
     user = getattr(request, "user", None)
     if is_admin(user):
-        items.append(("users", "users", "Users", {"users"}))
+        items.append(("users", "users", "Users", {"users"}, 0))
     return [
         {
             "href": reverse(name),
             "icon": icon,
             "label": label,
             "current": current in names,
+            "count": count,
         }
-        for name, icon, label, names in items
+        for name, icon, label, names, count in items
     ]

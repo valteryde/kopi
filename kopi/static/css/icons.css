@@ -41,6 +41,10 @@
     content: "\e184";
 }
 
+.ph.ph-circle-notch:before {
+    content: "\eb44";
+}
+
 .ph.ph-clock:before {
     content: "\e19a";
 }
@@ -51,6 +55,10 @@
 
 .ph.ph-cloud:before {
     content: "\e1aa";
+}
+
+.ph.ph-cloud-arrow-up:before {
+    content: "\e1ae";
 }
 
 .ph.ph-code:before {
@@ -79,6 +87,14 @@
 
 .ph.ph-file-code:before {
     content: "\e914";
+}
+
+.ph.ph-file-lock:before {
+    content: "\e95c";
+}
+
+.ph.ph-fingerprint:before {
+    content: "\e23e";
 }
 
 .ph.ph-folder:before {
