@@ -5,8 +5,44 @@ from kopi.sessionkey import load_session_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DEBUG = False
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+def security_settings(environ=None):
+    """Host and cookie flags from the environment. DEBUG stays off.
+
+    An unset `KOPI_ALLOWED_HOSTS` is localhost and 127.0.0.1. A set value
+    replaces that list. `KOPI_ALLOW_HTTP=1` turns off the secure session
+    cookie, the secure CSRF cookie, and the HTTPS redirect.
+    """
+    source = os.environ if environ is None else environ
+    raw_hosts = source.get("KOPI_ALLOWED_HOSTS")
+    if raw_hosts is None:
+        hosts = ["localhost", "127.0.0.1"]
+    else:
+        hosts = [part.strip() for part in raw_hosts.split(",") if part.strip()]
+    allow_http = source.get("KOPI_ALLOW_HTTP") == "1"
+    return {
+        "DEBUG": False,
+        "ALLOWED_HOSTS": hosts,
+        "SESSION_COOKIE_HTTPONLY": True,
+        "CSRF_COOKIE_HTTPONLY": True,
+        "SESSION_COOKIE_SAMESITE": "Lax",
+        "CSRF_COOKIE_SAMESITE": "Lax",
+        "SESSION_COOKIE_SECURE": not allow_http,
+        "CSRF_COOKIE_SECURE": not allow_http,
+        "SECURE_SSL_REDIRECT": not allow_http,
+    }
+
+
+_SECURITY = security_settings()
+DEBUG = _SECURITY["DEBUG"]
+ALLOWED_HOSTS = _SECURITY["ALLOWED_HOSTS"]
+SESSION_COOKIE_HTTPONLY = _SECURITY["SESSION_COOKIE_HTTPONLY"]
+CSRF_COOKIE_HTTPONLY = _SECURITY["CSRF_COOKIE_HTTPONLY"]
+SESSION_COOKIE_SAMESITE = _SECURITY["SESSION_COOKIE_SAMESITE"]
+CSRF_COOKIE_SAMESITE = _SECURITY["CSRF_COOKIE_SAMESITE"]
+SESSION_COOKIE_SECURE = _SECURITY["SESSION_COOKIE_SECURE"]
+CSRF_COOKIE_SECURE = _SECURITY["CSRF_COOKIE_SECURE"]
+SECURE_SSL_REDIRECT = _SECURITY["SECURE_SSL_REDIRECT"]
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -17,6 +53,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

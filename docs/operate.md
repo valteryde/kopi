@@ -1,0 +1,103 @@
+# Operate
+
+Kopi is one container. It serves the site and runs the worker. The image is stateless. A data volume holds SQLite, `secret.key`, and the separate key Django uses to sign sessions. A work volume holds the ciphertext while it is encrypted and uploaded.
+
+The process user is `kopi`, uid 10001, gid 10001. s6-overlay is PID 1. It migrates, then starts the site and the worker. The worker restarts if it exits. The site stays up while that happens.
+
+## Run the image
+
+The process listens on `8443`.
+
+* Publish that port. The development Compose file publishes it on `127.0.0.1:8443`.
+* Mount a certificate at `/cert/tls.crt` and the key at `/cert/tls.key`. Both have to be readable by uid 10001. Gunicorn uses them, and the site sees HTTPS from that socket.
+* Set `KOPI_ALLOWED_HOSTS` to the hostnames you will use, separated by commas. If the variable is unset, the web process refuses to start.
+* Mount a data volume at `/data` and a work volume at `/work`. `KOPI_DATA_DIR` and `KOPI_WORK_DIR` point at them.
+* The work volume has to hold the largest ciphertext. Kopi does not stage the plaintext. A restore downloads the ciphertext onto the work volume again before it writes plaintext at the destination, so leave room for that file as well.
+* Bind-mount each folder you want to back up, and bind-mount any pre or post script. A path saved in the UI is a path inside the container.
+
+`KOPI_ALLOW_HTTP=1` is the plain-HTTP opt-in. It binds the same port without the certificate. The image healthcheck requests `https://127.0.0.1:8443/` with the mounted certificate and expects HTTP 200, so the opt-in does not satisfy that check.
+
+`docker stop` needs about 30 seconds. Compose sets `stop_grace_period: 40s`. On SIGTERM, s6 signals the site and the worker and waits for the worker's own stop path. The worker stops claiming new runs and signals its children. A row left `running` stays `running`. The next start finishes it.
+
+The development file is `compose.yaml`. The Kopi service is on the `app` profile, on the same network as Postgres and Garage. `docker compose up` without the profile starts only those two. `harness/image-cert.sh` writes a throwaway certificate under `devdata/cert` before `docker compose --profile app up`.
+
+```yaml
+services:
+  kopi:
+    image: kopi
+    ports:
+      - "127.0.0.1:8443:8443"
+    environment:
+      KOPI_ALLOWED_HOSTS: kopi.example
+      KOPI_TLS_CERT: /cert/tls.crt
+      KOPI_TLS_KEY: /cert/tls.key
+    volumes:
+      - kopi_data:/data
+      - kopi_work:/work
+      - ./tls:/cert:ro
+      - ./uploads:/srv/uploads:ro
+      - ./hooks:/hooks:ro
+      - ./restore:/restore
+    stop_grace_period: 40s
+```
+
+## First run
+
+Open the site. The first request with an empty user table is the setup screen. It creates the admin and generates `secret.key`, then offers that file once. Download it and keep the copy outside any folder source. The working copy stays at `/data/secret.key`, mode `0600`.
+
+A folder backup skips a file named `secret.key` wherever it sits in the tree. Do not point a folder source at `/data`. The data volume is where the key and the database live, and it is not a backup source.
+
+## Sources, targets, links, schedules, and retention
+
+A source is one Postgres database or one folder tree. A target is an S3 bucket. A link connects one source to one target and stores the schedule, the retention rule, and the optional script paths.
+
+The schedule is a cron expression in the link's timezone. One link does not overlap itself. The worker runs one backup at a time. A backup has no maximum runtime. If it moves no bytes for 15 minutes, the run fails.
+
+A Postgres source stores the `pg_dump` binary it should use. The binary has to be at least as new as the server. The image has Postgres client 17 and 18, side by side:
+
+* `/usr/lib/postgresql/17/bin/pg_dump`
+* `/usr/lib/postgresql/18/bin/pg_dump`
+
+The source form lists them as `pg_dump 17` and `pg_dump 18`. Restore uses the `pg_restore` next to the dump binary the source stored.
+
+Folder paths and script paths are paths inside the container. Include and exclude rules are globs, one per line. An empty include list is the whole tree. Symlinks are stored as symlinks.
+
+Each link keeps the last N successful backups, or deletes objects older than a number of days. The rule runs after the backup. An object left by a failed post script still counts, because it is in the bucket.
+
+## Pre and post scripts
+
+Both files stay on disk. Kopi does not store the script body. It runs each as `bash <path>`, as the user `kopi`. An empty path skips that script.
+
+A pre-script failure, a missing file, or a pre-script timeout skips the backup. The post script does not run in that case. The post script still runs when the backup itself fails, as long as the pre script was skipped or exited 0. A successful upload is kept if the post script then fails. The run is still marked failed.
+
+Each script has its own timeout. A post script has to be safe to run again. If the worker stops after the pre script succeeded and before the post script finishes, the next start runs the post script again.
+
+The script's environment is `PATH`, `HOME`, `LANG`, and the run id. The database password, the S3 secret, and `secret.key` are not on the command line and not in that environment.
+
+## Restore
+
+An admin restores one finished backup that still has an object. A folder restore names an absolute path inside the container, outside `/data` and `/work`, on a mount the `kopi` user can write. Files are mode `0600` and directories are mode `0700`. A database restore names a database that already exists. Kopi loads the dump into it. The dump user needs to be allowed to write there.
+
+## Failure mail and the digest
+
+One SMTP channel, on the Mail screen. An admin edits it. A viewer can read it. The password is shown as "Set. Not shown."
+
+A failed run sends one message. It names the source, the target, the time, the reason, and either the object name or that nothing was uploaded. A send error is tried again on a later pass. The SMTP password is not in the message. Sending the message is an audit row. The run's own failure row stays as it is.
+
+The digest is the heartbeat. The default is monthly, on the 1st at 08:00, in the channel's timezone. Weekly is Monday at the chosen hour. Daily is every day at that hour. The Mail screen is what changes it. Several missed periods send one digest. The body lists every link: last success, last failure, and the size of the last success. No links still sends. A quiet installation with only successes still sends. If the digest stops arriving, Kopi is down, and something outside Kopi has to notice. A digest is not an audit row.
+
+Port 587 uses STARTTLS. Port 465 uses implicit TLS. Any other port sends without TLS.
+
+## Users, roles, and the audit log
+
+An admin manages sources, targets, links, users, and the mail channel, and can restore. A viewer can read the history, the configuration, the mail channel, and the audit log, and cannot change them.
+
+Repeated login failures pause that account for a short time.
+
+The audit log is the meaningful events: login, setup, the key being created, a source or target or link change, a run queued, started, and finished, a restore, a user created, notification settings changed, and failure mail sent. Job stdout is the run log, not the audit log.
+
+## If secret.key is lost
+
+Objects written with that key stay readable only with that key. Kopi cannot decrypt them, and it cannot decrypt the database passwords and S3 secrets stored in SQLite. The session key on the data volume is a different file. It signs cookies. It does not open a backup.
+
+Keep a copy of `secret.key` outside the container and outside every folder source. Losing the data volume and every copy of the key means the bucket is still full of ciphertext and none of it can be read.

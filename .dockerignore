@@ -1,0 +1,9 @@
+.git
+.venv
+.ward
+.vscode
+**/__pycache__
+**/*.py[cod]
+.env
+devdata
+secret.key

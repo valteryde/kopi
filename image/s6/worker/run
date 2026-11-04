@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+cd /opt/kopi
+umask 077
+exec 2>&1
+exec /command/s6-setuidgid kopi /opt/kopi/.venv/bin/python /opt/kopi/manage.py work

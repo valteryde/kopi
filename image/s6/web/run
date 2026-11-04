@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+if [ -z "${KOPI_ALLOWED_HOSTS+x}" ]; then
+    printf '%s\n' "KOPI_ALLOWED_HOSTS is unset" >&2
+    exit 1
+fi
+cd /opt/kopi
+umask 077
+exec 2>&1
+cert="${KOPI_TLS_CERT:-/cert/tls.crt}"
+key="${KOPI_TLS_KEY:-/cert/tls.key}"
+if [ "${KOPI_ALLOW_HTTP:-}" = "1" ]; then
+    exec /command/s6-setuidgid kopi /opt/kopi/.venv/bin/gunicorn \
+        --workers 1 \
+        --timeout 0 \
+        --forwarded-allow-ips "" \
+        --bind 0.0.0.0:8443 \
+        kopi.wsgi:application
+fi
+exec /command/s6-setuidgid kopi /opt/kopi/.venv/bin/gunicorn \
+    --workers 1 \
+    --timeout 0 \
+    --forwarded-allow-ips "" \
+    --bind 0.0.0.0:8443 \
+    --certfile "$cert" \
+    --keyfile "$key" \
+    kopi.wsgi:application

@@ -152,6 +152,7 @@ def sign_out(request):
 
 
 urlpatterns = [
+    path("", account, name="home"),
     path("login/", account, name="login"),
     path("login/secret.key", secret_key, name="secret-key"),
     path("logout/", sign_out, name="logout"),

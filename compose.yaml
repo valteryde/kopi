@@ -52,7 +52,31 @@ services:
         condition: service_started
     restart: "no"
 
+  app:
+    profiles: ["app"]
+    build: .
+    ports:
+      - "127.0.0.1:8443:8443"
+    environment:
+      KOPI_ALLOWED_HOSTS: 127.0.0.1,localhost
+      KOPI_TLS_CERT: /cert/tls.crt
+      KOPI_TLS_KEY: /cert/tls.key
+    volumes:
+      - kopi_data:/data
+      - kopi_work:/work
+      - ./devdata/cert:/cert:ro
+      - ./harness/folder:/fixtures/folder:ro
+      - ./devdata/restore:/restore
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage-init:
+        condition: service_completed_successfully
+    stop_grace_period: 40s
+
 volumes:
   postgres_data:
   garage_meta:
   garage_data:
+  kopi_data:
+  kopi_work:

@@ -1,0 +1,1 @@
+/bin/sh -c "set -eu; cd /opt/kopi; umask 077; exec /command/s6-setuidgid kopi /opt/kopi/.venv/bin/python /opt/kopi/manage.py migrate --noinput"

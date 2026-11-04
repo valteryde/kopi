@@ -1,0 +1,1 @@
+/bin/sh -c "set -eu; mkdir -p /data /work/tmp; chown kopi:kopi /data /work /work/tmp; chmod 700 /data /work /work/tmp"

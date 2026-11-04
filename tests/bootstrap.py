@@ -10,6 +10,8 @@ from pathlib import Path
 
 _TMP = tempfile.TemporaryDirectory(prefix="kopi-tests-")
 os.environ["KOPI_DATA_DIR"] = _TMP.name
+# Before Django starts, so the client tests stay on HTTP.
+os.environ["KOPI_ALLOW_HTTP"] = "1"
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kopi.settings")
 
 import django

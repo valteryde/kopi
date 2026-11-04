@@ -2,6 +2,10 @@
 
 Kopi backs up Postgres databases and folders to S3. The host encrypts every backup before upload, so the bucket stores ciphertext.
 
+## Operate
+
+[Operate](docs/operate.md) is the guide for running the image.
+
 - [Spec](docs/specsheet.md)
 - [Stack](docs/techstack.md)
 - [Roadmap](docs/roadmap.md)
@@ -17,6 +21,8 @@ Postgres 18 and Garage run in Docker Compose. The Django project stores SQLite i
 
 Dev credentials are in `.env.example`. The image build leaves them out.
 
+Host development exports `KOPI_ALLOW_HTTP=1` so the development server accepts plain HTTP. The image does not.
+
 ```sh
 docker compose up -d
 ```
@@ -27,7 +33,14 @@ Postgres is published on `127.0.0.1:5432`. Garage's S3 API is published on `127.
 
 `garage-init` exits 0 once the bucket and access key exist. `docker compose up --wait` can still return non-zero, because that container is meant to exit.
 
-Ward tests tagged `integration` talk to the harness and skip when Compose is not up.
+The image joins this network behind the `app` profile. `docker compose up` without that profile still starts only Postgres and Garage. `harness/image-cert.sh` writes a throwaway certificate under `devdata/cert`. That key is not committed.
+
+```sh
+harness/image-cert.sh
+docker compose --profile app up -d --build
+```
+
+The image listens on `https://127.0.0.1:8443/`. Ward tests tagged `integration` skip when Compose is not up. Tests tagged `image` skip unless that port answers. On a fresh data volume the image test runs setup. After that it signs in as `admin` with password `kopi-image-pass`.
 
 ```sh
 ward
