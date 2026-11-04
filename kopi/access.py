@@ -58,6 +58,7 @@ def _nav(request):
     items = (
         ("runs", "clock-counter-clockwise", "Runs", {"runs"}),
         ("sources", "database", "Sources", {"sources", "source", "source-new"}),
+        ("targets", "cloud", "Targets", {"targets", "target", "target-new"}),
         ("audit", "scroll", "Audit", {"audit"}),
     )
     return [

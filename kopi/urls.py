@@ -5,4 +5,5 @@ urlpatterns = [
     path("", include("kopi.views.runs")),
     path("", include("kopi.views.audit")),
     path("", include("kopi.views.sources")),
+    path("", include("kopi.views.targets")),
 ]

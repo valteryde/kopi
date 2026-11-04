@@ -1,0 +1,100 @@
+{% extends "base.jinja" %}
+{% import "macros.jinja" as ui %}
+
+{% macro shown(field) -%}
+{{ field.value() if field.value() is not none else "" }}
+{%- endmacro %}
+
+{% macro text_field(icon, label, name, placeholder="") %}
+<label class="stack">
+    <span>{{ ui.icon(icon) }} {{ label }}</span>
+    <input type="text" name="{{ name }}" value="{{ shown(form[name]) }}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}>
+    {% if form[name].errors %}
+    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form[name].errors[0] }}</p>
+    {% endif %}
+</label>
+{% endmacro %}
+
+{% block title %}Targets · Kopi{% endblock %}
+
+{% block main %}
+{% call ui.page_head("Targets", "cloud", "A target is an S3 bucket. The object payload is ciphertext.") %}
+    {{ ui.search_field("find-targets", "Search targets", "Search targets", "#target-rows .pick", "target") }}
+    {% if can_edit %}
+    <a class="btn" href="{{ url('target-new') }}">{{ ui.icon("plus") }} New target</a>
+    {% endif %}
+{% endcall %}
+<div class="layout">
+    <div class="panel" id="target-rows">
+        {% for pick in picks %}
+        {{ ui.pick(pick.href, pick.icon, pick.name, pick.sub, pick.sub_icon, pick.current) }}
+        {% endfor %}
+        {{ ui.empty_line("target", "No targets match.") }}
+    </div>
+    <div class="panel inspect">
+        {% if mode == "empty" %}
+        <div class="detail">
+            <h2>{{ ui.icon("cloud") }} Nothing here yet</h2>
+        </div>
+        {% elif mode == "detail" %}
+        <div class="detail">
+            <h2>{{ ui.icon("cloud") }} {{ detail.title }}</h2>
+            {% for row in detail.rows %}
+            <div class="kv">{{ ui.icon(row.icon) }}<div class="k">{{ row.key }}</div><div class="v{% if row.mono %} mono{% endif %}">{% if row.marked %}{{ ui.icon("check") }} {% endif %}{{ row.value }}</div></div>
+            {% endfor %}
+            <p class="hint">{{ ui.icon("info") }} {{ hint }}</p>
+        </div>
+        {% else %}
+        <div class="detail">
+            <h2>{% if mode == "new" %}{{ ui.icon("plus") }} New target{% else %}{{ ui.icon("cloud") }} {{ target.name }}{% endif %}</h2>
+            <form method="post" action="{% if mode == 'new' %}{{ url('target-new') }}{% else %}{{ url('target', args=[target.pk]) }}{% endif %}" autocomplete="off">
+                {{ csrf_input }}
+                {% for error in form.non_field_errors() %}
+                <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
+                {% endfor %}
+                {{ text_field("tag", "Name", "name", "kopi-eu") }}
+                {{ text_field("globe", "Endpoint", "endpoint", "s3.eu-central-1.amazonaws.com") }}
+                {{ text_field("map-pin", "Region", "region", "eu-central-1") }}
+                {{ text_field("archive", "Bucket", "bucket", "kopi-eu") }}
+                <label class="stack">
+                    <span>{{ ui.icon("path") }} Addressing</span>
+                    <select name="addressing">
+                        <option value="virtual"{% if form["addressing"].value() != "path" %} selected{% endif %}>Virtual-hosted</option>
+                        <option value="path"{% if form["addressing"].value() == "path" %} selected{% endif %}>Path-style</option>
+                    </select>
+                    {% if form["addressing"].errors %}
+                    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form["addressing"].errors[0] }}</p>
+                    {% endif %}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("identification-badge") }} Access key</span>
+                    <input type="text" name="access_key" autocomplete="off" placeholder="{% if mode == 'edit' %}Leave blank to keep it{% else %}AKIA…{% endif %}">
+                    {% if form["access_key"].errors %}
+                    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form["access_key"].errors[0] }}</p>
+                    {% elif access_set %}
+                    <p class="hint">{{ ui.icon("check") }} Set. Not shown.</p>
+                    {% endif %}
+                </label>
+                <label class="stack">
+                    <span>{{ ui.icon("lock-key") }} Secret</span>
+                    <input type="password" name="secret" autocomplete="new-password" placeholder="{% if mode == 'edit' %}Leave blank to keep it{% else %}Stored as ciphertext{% endif %}">
+                    {% if form["secret"].errors %}
+                    <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ form["secret"].errors[0] }}</p>
+                    {% elif secret_set %}
+                    <p class="hint">{{ ui.icon("check") }} Set. Not shown.</p>
+                    {% endif %}
+                </label>
+                <p class="hint">{{ ui.icon("info") }} {{ hint }}</p>
+                <div class="detail-actions">
+                    <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static('js/filter.js') }}"></script>
+{% endblock %}
