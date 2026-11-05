@@ -32,7 +32,7 @@ from kopi.pipeline import (
     start_folder_producer,
 )
 from kopi.retention import apply_retention
-from kopi.postgres import archive_database
+from kopi.postgres import POOLER_EXPLAINED, archive_database, pooler_reason
 from kopi.settings import work_directory
 from kopi.storage import S3Storage, StorageError, object_key
 
@@ -223,6 +223,9 @@ def execute(
     pre_ok = False
     try:
         _mark_running(run_id)
+        warning = _pooler_note(link.source)
+        if warning:
+            log.add(warning)
         if link.pre_script_path.strip():
             _begin(ctx, progress, Run.Phase.PRE)
             run_hook(link.pre_script_path, link.pre_script_timeout, run_id, log)
@@ -458,6 +461,21 @@ def _archive(run, ciphertext: Path, identity: Identity, tmpdir: Path, ctx: _Cont
         )
     finally:
         ctx.producer = None
+
+
+def _pooler_note(source) -> str:
+    """Warn in the run log when the source names a pooler instead of the server.
+
+    The form refuses this and the admin has to acknowledge it. A source saved
+    before that rule, or saved with the box ticked, still runs. The dump works
+    and the pool is what pays for it, so the run says so out loud.
+    """
+    if source.kind != Source.Kind.POSTGRES:
+        return ""
+    reason = pooler_reason(source.pg_host, source.pg_port)
+    if reason is None:
+        return ""
+    return f"warning: {reason}. {POOLER_EXPLAINED}"
 
 
 def _archive_postgres(source, ciphertext, identity, tmpdir, ctx: _Context, run_id: str) -> Marker:

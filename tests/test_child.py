@@ -50,13 +50,14 @@ def _run(
     pre_timeout: int = 30,
     post_timeout: int = 30,
     kind: str = Source.Kind.FOLDER,
+    pg_host: str = "127.0.0.1",
 ) -> Run:
     source_dir = _folder(tmp) if kind == Source.Kind.FOLDER else None
     source = Source.objects.create(
         name=_name("src"),
         kind=kind,
         root_path=str(source_dir or ""),
-        pg_host="127.0.0.1" if kind == Source.Kind.POSTGRES else "",
+        pg_host=pg_host if kind == Source.Kind.POSTGRES else "",
         pg_database="kopi" if kind == Source.Kind.POSTGRES else "",
         pg_user="kopi" if kind == Source.Kind.POSTGRES else "",
         pg_password="ciphertext" if kind == Source.Kind.POSTGRES else "",
@@ -592,3 +593,24 @@ def _():
 def tempfile_dir():
     with tempfile.TemporaryDirectory() as tmp:
         yield Path(tmp)
+
+
+@test("a Postgres source that names a pooler opens the run log with the warning")
+def _():
+    with tempfile_dir() as tmp:
+        run = _run(tmp, kind=Source.Kind.POSTGRES, pg_host="pgbouncer")
+        identity = generate_identity(tmp / "secret.key")
+        execute(run.pk, identity=identity, storage=FakeStorage(), work_dir=tmp / "work")
+        run = _refresh(run)
+        assert "warning: host 'pgbouncer' looks like a connection pooler." in run.log
+        assert "hands that" in run.log
+        folder = _run(tmp)
+        execute(
+            folder.pk,
+            identity=identity,
+            storage=FakeStorage(),
+            work_dir=tmp / "work-folder",
+        )
+        folder = _refresh(folder)
+        assert folder.status == Run.Status.SUCCEEDED
+        assert "pooler" not in folder.log

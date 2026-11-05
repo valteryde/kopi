@@ -12,7 +12,7 @@ from kopi.child import execute
 from kopi.identity import encrypt_secret, generate_identity
 from kopi.models import Link, Run, Source, Target
 from kopi.pipeline import marker_path
-from kopi.postgres import restore_database
+from kopi.postgres import pooler_reason, restore_database
 from kopi.storage import FakeStorage, S3Storage
 from tests.test_harness import compose_is_down, pg_dump_binary, runtime_env
 
@@ -68,6 +68,25 @@ def _assert_secret_stays_off_argv(record: dict, password: str) -> None:
     assert password in record["pgpass"]
     assert record["mode"] == "0o600"
     assert not Path(record["pgpass_path"]).exists()
+
+
+@test("a pooler host or port is named as a pooler, and a plain server is not")
+def _():
+    assert pooler_reason("pgbouncer", 5432) == "host 'pgbouncer' looks like a connection pooler"
+    assert (
+        pooler_reason("Postgres-Pooler-01", 5432)
+        == "host 'Postgres-Pooler-01' looks like a connection pooler"
+    )
+    assert pooler_reason("db.internal", 6432) == "port 6432 is the PgBouncer default"
+    assert pooler_reason("db.internal", 9999) == "port 9999 is the PgPool-II default"
+    assert pooler_reason("db.internal", 5000) == "port 5000 is the Odyssey default"
+    assert pooler_reason("db.internal", 5432) is None
+    assert pooler_reason("postgres", 5432) is None
+    assert pooler_reason("poolhouse", 5432) is None
+    assert pooler_reason("", 5432) is None
+    assert pooler_reason("db.internal", None) is None
+    assert pooler_reason("db.internal", "5432") is None
+    assert pooler_reason("db.internal", "bad") is None
 
 
 @test("pg_dump is invoked without the password and the pgpass file does not survive")

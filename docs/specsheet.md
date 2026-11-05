@@ -36,7 +36,7 @@ The key protects data at rest in S3. Anyone who can read the Kopi host can read 
 
 # Sources
 
-* **Postgres.** Host, database name, user, and password. One database is one source. The backup is a logical dump (`pg_dump`), not a physical base backup.
+* **Postgres.** Host, database name, user, and password. One database is one source. The backup is a logical dump (`pg_dump`), not a physical base backup. The host names the server itself. A connection pooler is refused, because the dump leaves an empty search path on whatever session it borrowed.
 * **Folders.** A root path plus include and exclude rules. The archive is a full copy of the matched files for that run, including permissions, compressed with zstd. Symlinks are stored as symlinks, not followed. Incremental folder backup is out of scope for v1.
 
 # Pre and post scripts

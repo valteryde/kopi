@@ -1,8 +1,14 @@
-"""Folder and Postgres source forms. The password is not stored here."""
+"""Folder and Postgres source forms. The password is not stored here.
+
+A Postgres source that names a connection pooler is refused until the admin
+ticks the acknowledgement. The acknowledgement is not stored, so it is stated
+again on every save.
+"""
 
 from django import forms
 
 from kopi.models import Source
+from kopi.postgres import POOLER_EXPLAINED, pooler_reason
 
 
 class FolderSourceForm(forms.Form):
@@ -48,14 +54,30 @@ class PostgresSourceForm(forms.Form):
             "max_length": "Choose a pg_dump binary from PATH.",
         },
     )
+    # Not stored. The admin re-states this on every save that names a pooler.
+    acknowledge_pooler = forms.BooleanField(required=False)
 
     def __init__(self, *args, source: Source | None = None, binaries=None, **kwargs):
         self.source = source
         self.binaries = list(binaries or [])
+        self.pooler_reason = ""
         super().__init__(*args, **kwargs)
 
     def clean_name(self):
         return _unique_name(self.cleaned_data["name"], self.source)
+
+    def clean(self):
+        cleaned = super().clean()
+        reason = pooler_reason(cleaned.get("pg_host", ""), cleaned.get("pg_port"))
+        self.pooler_reason = reason or ""
+        if reason and not cleaned.get("acknowledge_pooler"):
+            self.add_error(
+                "pg_host",
+                f"The backup has to reach the Postgres server itself: {reason}. "
+                f"{POOLER_EXPLAINED} Tick the box below only when the pooler "
+                "resets every backend it returns to the pool.",
+            )
+        return cleaned
 
     def clean_pg_password(self):
         password = self.cleaned_data.get("pg_password") or ""

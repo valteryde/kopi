@@ -99,7 +99,13 @@
                     <p class="hint">{{ ui.icon("warning") }} No pg_dump binary was found on PATH.</p>
                     {% endif %}
                 </label>
-                <p class="hint">{{ ui.icon("info") }} The backup is a logical dump, one database.</p>
+                {% if form.pooler_reason %}
+                <label class="stack">
+                    <span><input type="checkbox" name="acknowledge_pooler" value="yes"{% if form.acknowledge_pooler.value() %} checked{% endif %}> Run it through a pooler anyway</span>
+                    <p class="hint">{{ ui.icon("warning") }} {{ form.pooler_reason }}. {{ pooler_hint }}</p>
+                </label>
+                {% endif %}
+                <p class="hint">{{ ui.icon("info") }} The backup is a logical dump, one database, and the host is the Postgres server itself.</p>
                 {% else %}
                 {{ text_field("tag", "Name", "name", "uploads") }}
                 {{ text_field("folder-open", "Root path", "root_path", "/srv/uploads") }}

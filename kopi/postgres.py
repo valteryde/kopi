@@ -1,7 +1,8 @@
 """Logical Postgres dumps through the same age pipeline as a folder archive.
 
 `pg_dump -Fc` never sees the password on its command line. The child writes
-a mode 0600 pgpass file and deletes it before returning.
+a mode 0600 pgpass file and deletes it before returning. A source names the
+server itself, never a connection pooler; `pooler_reason` is what refuses it.
 """
 
 import os
@@ -12,6 +13,42 @@ from pathlib import Path
 from kopi.identity import Identity, _cli_env
 from kopi.pdeath import popen_kwargs
 from kopi.pipeline import Marker, PipelineError, Producer, archive, read_marker
+
+
+# `pg_dump` empties `search_path` for the rest of its own session:
+#
+#     SELECT pg_catalog.set_config('search_path', '', false);
+#
+# On a server that is harmless, because the backend goes away with the dump. A
+# connection pooler keeps that backend and hands it to the next client, which
+# then finds none of its own tables. Every name and port below is a way an
+# operator reaches a pooler by accident instead of the server.
+POOLER_PORTS = {6432: "PgBouncer", 9999: "PgPool-II", 5000: "Odyssey"}
+POOLER_MARKS = ("bouncer", "pooler", "pgpool", "pgcat", "pgdog", "odyssey", "pgproxy")
+POOLER_EXPLAINED = (
+    "A dump empties search_path for its own session, and a pooler hands that "
+    "backend to the next client. Its tables then read as missing."
+)
+
+
+def pooler_reason(host: str, port: int | str | None) -> str | None:
+    """Return why this host and port look like a pooler, or None.
+
+    The name wins over the port: an operator who typed a pooler service name
+    means that host, whatever port they paired it with. The port is read
+    defensively because an uncleaned form value can arrive as text.
+    """
+    name = str(host or "").strip().lower()
+    for mark in POOLER_MARKS:
+        if mark in name:
+            return f"host '{host}' looks like a connection pooler"
+    try:
+        number = int(port or 0)
+    except (TypeError, ValueError):
+        number = 0
+    if number in POOLER_PORTS:
+        return f"port {number} is the {POOLER_PORTS[number]} default"
+    return None
 
 
 def dump_argv(binary: str, *, host: str, port: int, user: str, database: str) -> list[str]:

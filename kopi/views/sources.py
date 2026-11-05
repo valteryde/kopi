@@ -18,7 +18,7 @@ from kopi.forms.sources import FolderSourceForm, PostgresSourceForm
 from kopi.identity import IdentityError, encrypt_secret
 from kopi.rekey import open_identity
 from kopi.models import Source
-from kopi.postgres import find_dump_binaries
+from kopi.postgres import POOLER_EXPLAINED, find_dump_binaries, pooler_reason
 
 
 def sources(request):
@@ -187,6 +187,7 @@ def _render(request, *, selected, source, kind, form, binaries, remove_error="")
             "source": source,
             "detail": detail,
             "binaries": binaries,
+            "pooler_hint": POOLER_EXPLAINED,
             "password_set": bool(source and source.pg_password),
             "remove_error": remove_error,
         },
@@ -231,20 +232,25 @@ def _detail(source: Source, labels: dict) -> dict:
         }
     label = labels.get(source.pg_dump_binary, source.pg_dump_binary)
     password = "Set. Not shown." if source.pg_password else "Not set."
+    rows = [
+        _row("database", "Kind", "Postgres", False),
+        _row("globe", "Host", source.pg_host, True),
+        _row("plugs", "Port", str(source.pg_port), False),
+        _row("table", "Database", source.pg_database, False),
+        _row("user", "User", source.pg_user, False),
+        _row("lock-key", "Password", password, False, marked=bool(source.pg_password)),
+        _row("terminal-window", "Dump binary", label, True),
+    ]
+    reason = pooler_reason(source.pg_host, source.pg_port)
+    note = "" if reason is None else f"{reason}. {POOLER_EXPLAINED}"
+    if note:
+        rows.append(_row("warning", "Pooler", note, False))
     return {
         "icon": "database",
         "title": source.name,
-        "rows": [
-            _row("database", "Kind", "Postgres", False),
-            _row("globe", "Host", source.pg_host, True),
-            _row("plugs", "Port", str(source.pg_port), False),
-            _row("table", "Database", source.pg_database, False),
-            _row("user", "User", source.pg_user, False),
-            _row("lock-key", "Password", password, False, marked=bool(source.pg_password)),
-            _row("terminal-window", "Dump binary", label, True),
-        ],
-        "hint_icon": "info",
-        "hint": "The backup is a logical dump, one database.",
+        "rows": rows,
+        "hint_icon": "warning" if note else "info",
+        "hint": note or "The backup is a logical dump, one database.",
     }
 
 
@@ -284,7 +290,12 @@ def _blank_form(source: Source | None, kind: str = "", binaries=None):
             "pg_user": source.pg_user,
             "pg_dump_binary": source.pg_dump_binary,
         }
-    return PostgresSourceForm(initial=initial, source=source, binaries=binaries)
+    form = PostgresSourceForm(initial=initial, source=source, binaries=binaries)
+    if source is not None:
+        # A source saved earlier can name a pooler. Say so on the form, and
+        # leave the box unticked: the acknowledgement has to be made again.
+        form.pooler_reason = pooler_reason(source.pg_host, source.pg_port) or ""
+    return form
 
 
 def _bound_form(kind: str, data, source: Source | None, binaries):

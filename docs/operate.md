@@ -65,6 +65,16 @@ A Postgres source stores the `pg_dump` binary it should use. The binary has to b
 
 The source form lists them as `pg_dump 17` and `pg_dump 18`. Restore uses the `pg_restore` next to the dump binary the source stored.
 
+A Postgres source names the **server**, never a connection pooler. `pg_dump` empties the search path for the rest of its own session:
+
+```sql
+SELECT pg_catalog.set_config('search_path', '', false);
+```
+
+On the server that is harmless, because the backend closes with the dump. A pooler in transaction or statement mode keeps that backend and hands it to the next client, and that client then finds none of its own tables. Every read answers `relation "…" does not exist`, and a create answers `no schema has been selected to create in`. Nothing was dropped and nothing was restored: the data is where it always was, and a restart of the server or the pooler clears it. That is why a dump through a pooler looks like a lost schema hours later, to whichever service drew that backend.
+
+Kopi refuses a source whose host holds `bouncer`, `pooler`, `pgpool`, `pgcat`, `pgdog`, `odyssey`, or `pgproxy`, or whose port is 6432, 9999, or 5000. The admin can tick *Run it through a pooler anyway*. That tick is not stored, so it has to be made again on every save. A source that already names a pooler keeps running, and the run log leads with the same warning. If a pooler has to sit in front of the server for the backup, it has to reset every backend it returns to the pool: `server_reset_query_always = 1` with `server_reset_query = DISCARD ALL` on PgBouncer 1.16 or newer. In transaction mode, `server_reset_query` on its own does not run.
+
 Folder paths and script paths are paths inside the container. Include and exclude rules are globs, one per line. An empty include list is the whole tree. A pattern with no slash matches that name in any directory. `**` crosses directories, and any other wildcard stays inside one path segment. Exclude wins. `secret.key` is skipped even when an include would match it. Symlinks are stored as symlinks.
 
 An admin can remove a source or a target that no link uses. A link with no runs can be removed. A link that has history can be retired: the schedule stops, Run now is refused, and the runs stay. Resume puts that link back on the schedule.

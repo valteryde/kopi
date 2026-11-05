@@ -227,3 +227,136 @@ def _():
         os.environ["PATH"] = previous_path
         if created_key and key.exists():
             key.unlink()
+
+
+@test("a Postgres source that names a pooler is refused until the admin ticks the box")
+def _():
+    token = uuid.uuid4().hex[:8]
+    name = f"pool-{token}"
+    admin = _user(f"pool-admin-{token}", "admin")
+    key = Path(settings.DATA_DIR) / IDENTITY_FILENAME
+    created_key = not key.exists()
+    generate_identity(key) if created_key else load_identity(key)
+    dump_dir = Path(settings.DATA_DIR) / f"pool-dump-{token}"
+    dump_dir.mkdir()
+    dump = dump_dir / "pg_dump"
+    dump.write_text("#!/bin/sh\nprintf '%s\\n' 'pg_dump (PostgreSQL) 17.4'\n")
+    dump.chmod(0o755)
+    previous_path = os.environ.get("PATH", "")
+    os.environ["PATH"] = f"{dump_dir}{os.pathsep}{previous_path}"
+    try:
+        client = _client()
+        client.force_login(admin)
+        page = client.get(reverse("source-new") + "?kind=postgres")
+        csrf = _csrf(page.content.decode())
+        assert "the host is the Postgres server itself" in page.content.decode()
+        base = {
+            "kind": "postgres",
+            "name": name,
+            "pg_database": "core_db",
+            "pg_user": "kopi",
+            "pg_password": f"pw-{token}",
+            "pg_dump_binary": os.fspath(dump),
+        }
+
+        refused = _post(
+            client,
+            reverse("source-new"),
+            csrf,
+            {**base, "pg_host": "pgbouncer", "pg_port": "5432"},
+        )
+        seen = refused.content.decode()
+        assert refused.status_code == 200
+        assert not Source.objects.filter(name=name).exists()
+        assert "The backup has to reach the Postgres server itself" in seen
+        assert "looks like a connection pooler" in seen
+        assert "pgbouncer" in seen
+        assert "Run it through a pooler anyway" in seen
+        assert 'name="acknowledge_pooler"' in seen
+        assert "hands that backend to the next client" in seen
+        assert not AuditEvent.objects.filter(user=admin, event=f"Source created · {name}").exists()
+
+        ported = _post(
+            client,
+            reverse("source-new"),
+            csrf,
+            {**base, "pg_host": "db.internal", "pg_port": "6432"},
+        )
+        assert "port 6432 is the PgBouncer default" in ported.content.decode()
+        assert not Source.objects.filter(name=name).exists()
+
+        kept = _post(
+            client,
+            reverse("source-new"),
+            csrf,
+            {**base, "pg_host": "pgbouncer", "pg_port": "5432", "acknowledge_pooler": "yes"},
+        )
+        assert kept.status_code == 200
+        row = Source.objects.get(name=name)
+        assert row.pg_host == "pgbouncer"
+        assert row.pg_port == 5432
+        shown = kept.content.decode()
+        assert "looks like a connection pooler" in shown
+        assert "Run it through a pooler anyway" in shown
+        assert AuditEvent.objects.filter(user=admin, event=f"Source created · {name}").exists()
+
+        # A source that already names a pooler has to be re-ticked on every save.
+        again = _post(
+            client,
+            reverse("source", args=[row.pk]),
+            _csrf(shown),
+            {
+                "name": name,
+                "pg_host": "pgbouncer",
+                "pg_port": "5432",
+                "pg_database": "changed_db",
+                "pg_user": "kopi",
+                "pg_password": "",
+                "pg_dump_binary": os.fspath(dump),
+            },
+        )
+        assert "looks like a connection pooler" in again.content.decode()
+        row.refresh_from_db()
+        assert row.pg_database == "core_db"
+
+        reticked = _post(
+            client,
+            reverse("source", args=[row.pk]),
+            _csrf(again.content.decode()),
+            {
+                "name": name,
+                "pg_host": "pgbouncer",
+                "pg_port": "5432",
+                "pg_database": "changed_db",
+                "pg_user": "kopi",
+                "pg_password": "",
+                "pg_dump_binary": os.fspath(dump),
+                "acknowledge_pooler": "yes",
+            },
+        )
+        assert reticked.status_code == 200
+        row.refresh_from_db()
+        assert row.pg_database == "changed_db"
+
+        direct = _post(
+            client,
+            reverse("source", args=[row.pk]),
+            _csrf(again.content.decode()),
+            {
+                "name": name,
+                "pg_host": "postgres",
+                "pg_port": "5432",
+                "pg_database": "core_db",
+                "pg_user": "kopi",
+                "pg_password": "",
+                "pg_dump_binary": os.fspath(dump),
+            },
+        )
+        assert direct.status_code == 200
+        row.refresh_from_db()
+        assert row.pg_host == "postgres"
+        assert "looks like a connection pooler" not in direct.content.decode()
+    finally:
+        os.environ["PATH"] = previous_path
+        if created_key and key.exists():
+            key.unlink()
