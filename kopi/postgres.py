@@ -8,6 +8,7 @@ server itself, never a connection pooler; `pooler_reason` is what refuses it.
 import os
 import re
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from kopi.identity import Identity, _cli_env
@@ -49,6 +50,175 @@ def pooler_reason(host: str, port: int | str | None) -> str | None:
     if number in POOLER_PORTS:
         return f"port {number} is the {POOLER_PORTS[number]} default"
     return None
+
+
+# The probe asks one question and answers it once. `server_version` is a
+# setting every supported server has, and a row means the credentials worked.
+PROBE_STATEMENT = "SELECT current_setting('server_version')"
+PROBE_CONNECT_TIMEOUT = 8
+PROBE_TIMEOUT = 12
+_PROBE_DETAIL_CAP = 240
+
+_PROBE_MARKS = (
+    ("password authentication failed", "The user or the password was refused."),
+    ("no password supplied", "The server asked for a password and none was given."),
+    ("peer authentication failed", "The server wants peer authentication, not a password."),
+    ("no pg_hba.conf entry", "The server refuses this user from this host."),
+    ("invalid_catalog_name", "That database does not exist."),
+    ('database "', "That database does not exist."),
+    ("role ", "That user does not exist."),
+    ("could not translate host name", "The host name does not resolve."),
+    ("nodename nor servname", "The host name does not resolve."),
+    ("temporary failure in name resolution", "The host name does not resolve."),
+    ("connection refused", "Nothing is listening on that host and port."),
+    ("network is unreachable", "This host cannot reach that address."),
+    ("no route to host", "This host cannot reach that address."),
+    ("connection timed out", "The server did not answer in time."),
+    ("timeout expired", "The server did not answer in time."),
+    ("unsupported frontend protocol", "This psql is too old for that server."),
+    ("unsupported version", "This psql and that server do not speak to each other."),
+    ("ssl request", "The server and this client cannot agree on TLS."),
+    ("ssl connection", "The TLS connection to the server failed."),
+)
+
+
+@dataclass(frozen=True)
+class Probe:
+    """One connection attempt. `version` is the server's, when it answered."""
+
+    ok: bool
+    version: str = ""
+    detail: str = ""
+
+
+def psql_binary_for(dump_binary: str) -> str:
+    """The `psql` that sits next to this `pg_dump`, or the one on `PATH`.
+
+    The image keeps one client per Postgres major in its own directory, so
+    the sibling answers the same server versions the dump binary does.
+    """
+    if dump_binary:
+        sibling = Path(dump_binary).with_name("psql")
+        if sibling.is_file():
+            return os.fspath(sibling)
+    return "psql"
+
+
+def probe_argv(binary: str, *, host: str, port: int, user: str, database: str) -> list[str]:
+    return [
+        binary or "psql",
+        "-q",
+        "-t",
+        "-A",
+        "--no-password",
+        "-h",
+        host,
+        "-p",
+        str(port),
+        "-U",
+        user,
+        "-d",
+        database,
+        "-c",
+        PROBE_STATEMENT,
+    ]
+
+
+def probe_database(
+    *,
+    binary: str,
+    host: str,
+    port: int,
+    user: str,
+    database: str,
+    password: str,
+    tmpdir: Path,
+    timeout: int = PROBE_TIMEOUT,
+) -> Probe:
+    """Open one connection and read the server version. The pgpass file is gone
+    when this returns, and the password is never on the command line.
+    """
+    binary = psql_binary_for(binary)
+    pgpass = write_pgpass(
+        tmpdir,
+        host=host,
+        port=port,
+        database=database,
+        user=user,
+        password=password,
+    )
+    env = _tool_env(tmpdir)
+    env["PGPASSFILE"] = os.fspath(pgpass)
+    env["PGCONNECT_TIMEOUT"] = str(min(PROBE_CONNECT_TIMEOUT, max(1, timeout - 1)))
+    try:
+        completed = subprocess.run(
+            probe_argv(binary, host=host, port=port, user=user, database=database),
+            capture_output=True,
+            env=env,
+            check=False,
+            stdin=subprocess.DEVNULL,
+            timeout=timeout,
+            **popen_kwargs(),
+        )
+    except subprocess.TimeoutExpired:
+        return Probe(False, detail=f"psql did not answer within {timeout} seconds")
+    except OSError:
+        return Probe(False, detail=f"{binary} is not installed on this host")
+    finally:
+        pgpass.unlink(missing_ok=True)
+    if completed.returncode != 0:
+        return Probe(False, detail=_probe_detail(completed.stderr, password))
+    lines = [line.strip() for line in completed.stdout.decode("utf-8", "replace").splitlines()]
+    answer = next((line for line in lines if line), "")
+    if not answer:
+        return Probe(False, detail="The server answered, but not to the version query.")
+    return Probe(True, version=answer)
+
+
+def binary_version(binary: str) -> str:
+    """The version a Postgres tool reports, as `18.2`. Empty when it cannot say."""
+    try:
+        completed = subprocess.run(
+            [binary, "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            stdin=subprocess.DEVNULL,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    match = re.search(r"(\d+(?:\.\d+)*)", completed.stdout)
+    return match.group(1) if match else ""
+
+
+def version_major(text: str) -> int:
+    """The major of a version string. `9.6.24` is 9, `18.2` is 18."""
+    try:
+        return int(str(text).strip().split(".")[0])
+    except (TypeError, ValueError):
+        return 0
+
+
+def _probe_detail(stderr: bytes, password: str) -> str:
+    """One line the operator can act on, with the password taken out of it."""
+    text = stderr.decode("utf-8", "replace")
+    if password:
+        text = text.replace(password, "********")
+    first = ""
+    lowered = text.lower()
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            first = line
+            break
+    if first.startswith("psql: error: "):
+        first = first.removeprefix("psql: error: ")
+    for mark, sentence in _PROBE_MARKS:
+        if mark in lowered:
+            return sentence
+    detail = first or "the connection failed"
+    return detail[:_PROBE_DETAIL_CAP]
 
 
 def dump_argv(binary: str, *, host: str, port: int, user: str, database: str) -> list[str]:

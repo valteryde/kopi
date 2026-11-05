@@ -129,6 +129,24 @@ def next_digest_at(
     return following.astimezone(timezone.utc)
 
 
+def next_run_at(cadence: str, zone_name: str, now: datetime) -> datetime | None:
+    """The next instant after `now`, in UTC. None when the pair cannot be stepped.
+
+    A check uses this to show the operator when the link would next run.
+    """
+    if now.tzinfo is None or now.tzinfo.utcoffset(now) is None:
+        raise ValueError("now must be timezone-aware")
+    instant = _latest_instant(cadence, zone_name, now)
+    if instant is None:
+        return None
+    local = instant.astimezone(ZoneInfo(zone_name))
+    try:
+        following = croniter(cadence, local).get_next(datetime)
+    except (CroniterError, TypeError, ValueError, OverflowError):
+        return None
+    return following.astimezone(timezone.utc)
+
+
 def _latest_instant(cadence: str, zone_name: str, now: datetime) -> datetime | None:
     """The latest cron instant at or before `now`, expressed in UTC."""
     if not known_timezone(zone_name):

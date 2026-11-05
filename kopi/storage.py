@@ -290,7 +290,6 @@ class S3Storage:
         path_style: bool = True,
     ) -> None:
         import boto3
-        from botocore.config import Config
 
         self.bucket = bucket
         self.client = boto3.client(
@@ -299,11 +298,7 @@ class S3Storage:
             region_name=region,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
-            config=Config(
-                signature_version="s3v4",
-                retries={"max_attempts": 3, "mode": "standard"},
-                s3={"addressing_style": "path" if path_style else "virtual"},
-            ),
+            config=client_config(path_style),
         )
 
     def put(
@@ -407,3 +402,67 @@ class S3Storage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+
+# A check writes one small object here and removes it again. The name is not
+# `source/timestamp/checksum`, so `list` skips it and retention cannot see it.
+CHECK_PREFIX = ".kopi-check/"
+
+
+def client_config(
+    path_style: bool,
+    *,
+    connect_timeout: int | None = None,
+    read_timeout: int | None = None,
+    max_attempts: int = 3,
+):
+    """The boto3 config every S3 client in Kopi builds. A check shortens the clocks.
+
+    Signing is always `s3v4`: a garage or MinIO bucket reached with the default
+    signature reads as a credential that does not match.
+    """
+    from botocore.config import Config
+
+    clocks = {}
+    if connect_timeout is not None:
+        clocks["connect_timeout"] = connect_timeout
+    if read_timeout is not None:
+        clocks["read_timeout"] = read_timeout
+    return Config(
+        signature_version="s3v4",
+        retries={"max_attempts": max_attempts, "mode": "standard"},
+        s3={"addressing_style": "path" if path_style else "virtual"},
+        **clocks,
+    )
+
+
+def probe_client(
+    *,
+    endpoint_url: str,
+    region: str,
+    access_key_id: str,
+    secret_access_key: str,
+    path_style: bool = True,
+    connect_timeout: int = 5,
+    read_timeout: int = 10,
+):
+    """A boto3 S3 client for one connectivity check.
+
+    Short timeouts and a single attempt, because an operator waits inside a
+    request. `S3Storage` keeps its own retry policy for a real upload.
+    """
+    import boto3
+
+    return boto3.client(
+        "s3",
+        endpoint_url=endpoint_url or None,
+        region_name=region or None,
+        aws_access_key_id=access_key_id or None,
+        aws_secret_access_key=secret_access_key or None,
+        config=client_config(
+            path_style,
+            connect_timeout=connect_timeout,
+            read_timeout=read_timeout,
+            max_attempts=1,
+        ),
+    )

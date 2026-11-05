@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -305,25 +306,38 @@ def folder_members(root: Path, includes: str = "", excludes: str = "") -> list[s
     directories. Other wildcards stay inside one path segment. Exclude wins.
     `secret.key` is never a member.
     """
+    return _with_ancestors(list(folder_member_paths(root, includes, excludes)))
+
+
+def folder_member_paths(
+    root: Path,
+    includes: str = "",
+    excludes: str = "",
+    onerror=None,
+) -> Iterator[str]:
+    """Matched members, walking depth first, before parents are folded in.
+
+    A check that only counts members walks this lazily, so a huge tree does
+    not have to be held in memory. `onerror` is `os.walk`'s callback: a check
+    passes one to learn which directories it could not read.
+    """
     root = Path(root)
     include_rules = _rules(includes)
     exclude_rules = _rules(excludes)
-    chosen: list[str] = []
-    for rel in _walk_tree(root):
+    for rel in _walk_tree(root, onerror=onerror):
         if _excluded(rel, exclude_rules):
             continue
         if include_rules and not _included(rel, include_rules):
             continue
-        chosen.append(rel)
-    return _with_ancestors(chosen)
+        yield rel
 
 
 def _rules(text: str) -> tuple[str, ...]:
     return tuple(line.strip().strip("/") for line in text.splitlines() if line.strip().strip("/"))
 
 
-def _walk_tree(root: Path):
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+def _walk_tree(root: Path, onerror=None):
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False, onerror=onerror):
         base = Path(dirpath)
         kept = []
         for name in dirnames:

@@ -5,7 +5,7 @@ import tests.bootstrap  # noqa: F401
 from ward import test
 
 from kopi.models import Link, Run, Source, Target
-from kopi.schedule import is_due
+from kopi.schedule import is_due, next_run_at
 
 # Europe/Copenhagen is UTC+1 on these November dates. Clocks are UTC so the
 # check has to apply the link timezone itself.
@@ -106,3 +106,34 @@ def _():
     now = datetime(2026, 11, 3, 3, 0, tzinfo=timezone.utc)
     for zone in ("Not/AZone", "", "Europe/Copenhagn"):
         assert is_due(_link(zone=zone), now) is False
+
+
+@test("the next instant a link owes is the one after now, in the link's own zone")
+def _():
+    # Copenhagen is UTC+1 on these November dates, so 02:00 there is 01:00 UTC.
+    after = next_run_at(
+        "0 2 * * *", "Europe/Copenhagen", datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)
+    )
+    assert after == datetime(2026, 11, 6, 1, 0, tzinfo=timezone.utc)
+
+    # A clock sitting exactly on an instant asks for the following one.
+    exact = next_run_at(
+        "0 2 * * *", "Europe/Copenhagen", datetime(2026, 11, 5, 1, 0, tzinfo=timezone.utc)
+    )
+    assert exact == datetime(2026, 11, 6, 1, 0, tzinfo=timezone.utc)
+
+    hourly = next_run_at("*/15 * * * *", "UTC", datetime(2026, 11, 5, 12, 7, tzinfo=timezone.utc))
+    assert hourly == datetime(2026, 11, 5, 12, 15, tzinfo=timezone.utc)
+
+    now = datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)
+    for cadence in ("not a cron", "", "61 3 * * *"):
+        assert next_run_at(cadence, "Europe/Copenhagen", now) is None
+    for zone in ("Not/AZone", ""):
+        assert next_run_at("0 2 * * *", zone, now) is None
+
+    try:
+        next_run_at("0 2 * * *", "UTC", datetime(2026, 11, 5, 12, 0))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("next_run_at needs an aware clock")

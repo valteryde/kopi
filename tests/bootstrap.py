@@ -34,3 +34,11 @@ from django.core.management import call_command
 call_command("migrate", verbosity=0, interactive=False)
 
 DATA_DIR = Path(_TMP.name)
+
+from kopi.identity import IDENTITY_FILENAME, generate_identity, load_identity
+
+
+def ensure_identity():
+    """The age identity every test that stores a secret reads and writes."""
+    path = DATA_DIR / IDENTITY_FILENAME
+    return generate_identity(path) if not path.exists() else load_identity(path)
