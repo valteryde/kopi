@@ -18,9 +18,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from kopi.audit import note_run_failed, note_run_finished, note_run_started
-from kopi.identity import IDENTITY_FILENAME, Identity, decrypt_secret
+from kopi.identity import Identity, decrypt_secret
+from kopi.hooks import resolve_hook
 from kopi.rekey import open_identity
-from kopi.sessionkey import FILENAME as SESSION_FILENAME
 from kopi.models import Run, Source
 from kopi.pdeath import popen_kwargs, watch_parent
 from kopi.pipeline import (
@@ -340,19 +340,13 @@ def reconcile_open(run_ids: list[int]) -> None:
 
 
 def run_hook(path_str: str, timeout: int, run_id: int, log: _Log) -> None:
-    if not path_str or not str(path_str).strip():
+    resolved, reason = resolve_hook(path_str)
+    if resolved is None:
+        if reason:
+            raise HookError(reason)
         return
-    path = Path(path_str)
-    try:
-        resolved = path.resolve(strict=True)
-    except OSError as exc:
-        raise HookError(f"{path} is not a regular file") from exc
-    if resolved.is_symlink() or not resolved.is_file():
-        raise HookError(f"{path} is not a regular file")
-    if _hook_blocked(resolved):
-        raise HookError(f"{path} is not allowed")
     proc = subprocess.Popen(
-        ["bash", os.fspath(path)],
+        ["bash", os.fspath(resolved)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=hook_env(run_id),
@@ -397,25 +391,6 @@ def run_hook(path_str: str, timeout: int, run_id: int, log: _Log) -> None:
         raise HookError("script timed out")
     if proc.returncode != 0:
         raise HookError(f"script exited {proc.returncode}")
-
-
-def _hook_blocked(path: Path) -> bool:
-    """The key, the session key, the database, and anything on the work volume."""
-    if path.name in {IDENTITY_FILENAME, SESSION_FILENAME, "kopi.sqlite3"}:
-        return True
-    try:
-        work = Path(work_directory()).resolve()
-    except OSError:
-        return False
-    return path == work or _is_inside(path, work)
-
-
-def _is_inside(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-    except ValueError:
-        return False
-    return True
 
 
 def _redact_log(data: bytes) -> bytes:
