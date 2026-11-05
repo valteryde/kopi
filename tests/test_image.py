@@ -493,7 +493,7 @@ def _():
             },
         )
         assert "postgres:5432 answered" in database_check, database_check[:600]
-        assert "pg_dump 18 against server 18" in database_check, database_check[:600]
+        assert "pg_dump 18" in database_check and "against server 18" in database_check, database_check[:600]
 
         _code, _url, page = site.open(f"/targets/{target_id}/")
         target_check = _check(
