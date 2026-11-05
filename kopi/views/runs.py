@@ -27,22 +27,8 @@ from kopi.models import Run, Source
 from kopi.pipeline import PipelineError, _write_marker, restore_folder
 from kopi.postgres import restore_database
 from kopi.settings import data_directory, work_directory
+from kopi.schedule import stamp
 from kopi.storage import StorageError, parse_object_key
-
-_MONTHS = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-)
 
 # The phases a run row stores. `poll.js` reads the keys from the page.
 _PHASES = (
@@ -448,8 +434,7 @@ def _source_icon(source: Source) -> str:
 
 
 def _when(moment) -> str:
-    local = timezone.localtime(moment)
-    return f"{local.day} {_MONTHS[local.month - 1]} {local.strftime('%H:%M')}"
+    return stamp(timezone.localtime(moment))
 
 
 urlpatterns = [

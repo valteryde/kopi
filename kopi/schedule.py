@@ -16,6 +16,35 @@ from croniter import CroniterError, croniter
 from kopi.models import Link, Run
 
 
+_MONTHS = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
+
+def zone_of(zone_name: str):
+    """The zone by that name, or UTC when the name is not one croniter can step."""
+    try:
+        return ZoneInfo(zone_name)
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        return timezone.utc
+
+
+def stamp(local: datetime) -> str:
+    """One local instant the way an operator reads it: `5 Nov 14:08`."""
+    return f"{local.day} {_MONTHS[local.month - 1]} {local.strftime('%H:%M')}"
+
+
 def known_timezone(zone_name: str) -> bool:
     """Whether `zone_name` is a zone the scheduler can evaluate."""
     try:

@@ -7,7 +7,6 @@ tick tries again. The password is decrypted only for the connection.
 
 from collections.abc import Callable
 from datetime import datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.core.mail import EmailMessage, get_connection
 from django.db import transaction
@@ -17,24 +16,9 @@ from kopi.audit import format_size, note_failure_mail
 from kopi.identity import decrypt_secret
 from kopi.models import Channel, Link, Run
 from kopi.rekey import open_identity
-from kopi.schedule import digest_due, next_digest_at
+from kopi.schedule import digest_due, next_digest_at, stamp, zone_of
 
 Sender = Callable[[Channel, str, str], None]
-
-_MONTHS = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-)
 
 DIGEST_SUBJECT = "Kopi status digest"
 
@@ -142,8 +126,7 @@ def digest_summary(channel: Channel, now: datetime) -> str:
 
 
 def format_when(moment: datetime, zone_name: str) -> str:
-    local = moment.astimezone(_zone(zone_name))
-    return f"{local.day} {_MONTHS[local.month - 1]} {local.strftime('%H:%M')}"
+    return stamp(moment.astimezone(zone_of(zone_name)))
 
 
 class LinkDigest:
@@ -236,9 +219,3 @@ def _password(channel: Channel) -> str:
     identity = open_identity()
     return decrypt_secret(identity, channel.password)
 
-
-def _zone(zone_name: str) -> ZoneInfo:
-    try:
-        return ZoneInfo(zone_name)
-    except (ZoneInfoNotFoundError, ValueError, TypeError):
-        return ZoneInfo("UTC")
