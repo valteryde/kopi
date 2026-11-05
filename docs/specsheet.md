@@ -24,6 +24,7 @@ The key protects data at rest in S3. Anyone who can read the Kopi host can read 
 * Send mail on failure, and a periodic status digest.
 * Stream each backup straight into `age` and store only ciphertext on the work volume. The volume has to fit the largest backup. A finished ciphertext file is kept and uploaded again if the upload fails, without taking another dump. An unfinished file is deleted. The ciphertext is deleted after a successful upload.
 * On each link, optionally run a bash script from disk before the backup and another after it.
+* Test a source, a target, or a link before it is saved. The check reports what it found, line by line, and saves nothing: no row is written and no backup is taken.
 
 `secret.key` is never part of a backup. A folder source that would include the key file skips that file.
 
@@ -72,9 +73,10 @@ A link can run a script before the backup and a script after it. The pre script 
 * Set multiple sources.
 * Connect a target to a source (create a link) and set that link's schedule, retention, and optional pre and post script paths.
 * Set the notification channel.
+* On each source, target, and link form, a Test button posts the values in the form and answers with the check lines: what answered, what refused, and what to change. A line is a check, a cross, a warning, or a note, and the button turns green or dark. A saved row's blank password or credential box is tried with what is already stored.
 * List backup runs and restore one backup.
 * While a run is in progress, show its phase and a live count of megabytes moved in that phase.
-* Full audit log of meaningful events: login, setup complete, source or target or link changed, run started and finished, restore, key replaced, notification settings changed. Job stdout is a run log, not the audit log.
+* Full audit log of meaningful events: login, setup complete, source or target or link changed, run started and finished, restore, key replaced, notification settings changed, and a check that reached the network. Job stdout is a run log, not the audit log.
 * Multiple user logins with two roles. An admin manages sources, targets, links, the key, and SMTP. A viewer can see backup history, restores, and the audit log.
 * A single setup screen on first install. It creates the first admin and generates `secret.key`. Sources, targets, and SMTP are configured after login.
 

@@ -21,6 +21,10 @@
 
 {% block title %}Links · Kopi{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static('css/checks.css') }}">
+{% endblock %}
+
 {% block main %}
 {% call ui.page_head("Links", "link", "A link is the job. Schedule, retention, and hook paths live here.") %}
     {{ ui.search_field("find-links", "Search links", "Search links", "#link-rows .pick", "link") }}
@@ -71,8 +75,9 @@
         {% else %}
         <div class="detail">
             <h2>{% if mode == "new" %}{{ ui.icon("plus") }} New link{% else %}{{ ui.icon("link") }} {{ link.source.name }}{% endif %}</h2>
-            <form method="post" action="{% if mode == 'new' %}{{ url('link-new') }}{% else %}{{ url('link', args=[link.pk]) }}{% endif %}" autocomplete="off">
+            <form method="post" action="{% if mode == 'new' %}{{ url('link-new') }}{% else %}{{ url('link', args=[link.pk]) }}{% endif %}" autocomplete="off" data-check="{{ url('link-test') }}">
                 {{ csrf_input }}
+                {% if mode == "edit" %}<input type="hidden" name="pk" value="{{ link.pk }}">{% endif %}
                 {% for error in form.non_field_errors() %}
                 <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
                 {% endfor %}
@@ -154,8 +159,10 @@
                     <p class="hint">{{ ui.icon("info") }} An empty path skips that script. Kopi does not store the script body.</p>
                 </div>
                 <div class="detail-actions">
+                    <button type="button" class="btn" data-check-button>{{ ui.icon("plugs") }} Test</button>
                     <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
                 </div>
+                <div class="check" data-check-out role="status" aria-live="polite" hidden></div>
             </form>
             {% if mode == "edit" %}
             <form method="post" action="{{ url('link-run', args=[link.pk]) }}">
@@ -189,4 +196,5 @@
 
 {% block scripts %}
 <script type="module" src="{{ static('js/filter.js') }}"></script>
+<script type="module" src="{{ static('js/checks.js') }}"></script>
 {% endblock %}

@@ -81,6 +81,26 @@ An admin can remove a source or a target that no link uses. A link with no runs 
 
 Each link keeps the last N successful backups, or deletes objects older than a number of days. The rule runs after the backup. An object left by a failed post script still counts, because it is in the bucket.
 
+## Test before you save
+
+Every source, target, and link form carries a **Test** button beside Save. It posts the values that are sitting in the form and answers with one line for each thing it tried. Nothing is saved, no run is queued, and no backup byte moves.
+
+The folder check reads the tree and counts what the include and exclude rules match. Zero matches is a refused line, not a note: that run would have written an empty archive.
+
+The Postgres check opens one connection with the `psql` that sits beside the `pg_dump` the source names, and reads `server_version` back. The password goes into a pgpass file, mode `0600`, deleted before the button answers, exactly as the dump does it. The check also compares that dump binary's version with the server's, and refuses a dump binary older than the server.
+
+The target check performs the calls a run makes: list the bucket, start and abort a multipart upload, then write, read back, and delete a few bytes under `.kopi-check/`. That name is not `source/timestamp/checksum`, so a bucket listing cannot return it and retention cannot mistake it for a backup. The probe is gone before the check answers. If the credentials cannot delete, the line says so and names what was left behind.
+
+The link check tries both ends, prints the next instant the cron owes in the link's own timezone, checks that each hook path is a regular file Kopi may run, and reports the free space on the work volume against `KOPI_DISK_FLOOR`.
+
+On a saved row the password and credential boxes are usually left blank. A blank box is tried with the ciphertext already stored. When `secret.key` cannot open it, the line says that instead of naming an endpoint.
+
+The probes are short, because they run inside a web request. `psql` gets 8 seconds to connect and the probe is cut at 12. The S3 client gets 5 seconds to connect, 10 seconds to read, and no retries. A check that reached the network leaves one line in the audit log. A form that does not validate is never probed.
+
+The check runs in the web process, as a restore does, and the image serves with one worker. A bucket that answers slowly keeps that worker busy until the probe is cut, so the lines come back late rather than in the background.
+
+A check answers whether the job can start. It does not measure how large the backup will be, and it does not run the pre script, so a link that passes can still fail later in the dump or in a script.
+
 ## Pre and post scripts
 
 Both files stay on disk. Kopi does not store the script body. It runs each as `bash <path>`, as the user `kopi`. An empty path skips that script.
@@ -113,7 +133,7 @@ An admin can disable another user. A disabled user cannot sign in, and a session
 
 Repeated login failures pause that account for a short time.
 
-The audit log is the meaningful events: login, setup, the key being created or replaced, a source or target or link change, a link removed, retired, or resumed, a run queued, started, and finished, a restore, a user created, disabled, or enabled, notification settings changed, and failure mail sent. Job stdout is the run log, not the audit log.
+The audit log is the meaningful events: login, setup, the key being created or replaced, a source or target or link change, a link removed, retired, or resumed, a run queued, started, and finished, a restore, a user created, disabled, or enabled, notification settings changed, failure mail sent, and a check that reached the network. Job stdout is the run log, not the audit log.
 
 ## If secret.key is lost
 

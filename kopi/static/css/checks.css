@@ -1,0 +1,64 @@
+/* The lines one Test button answers with. */
+
+.check {
+    margin-top: 12px;
+    padding-left: 12px;
+    border-left: 2px solid var(--line);
+}
+
+.check-group {
+    margin: 10px 0 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.check-group:first-child { margin-top: 0; }
+
+.check-line,
+.check-tally {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 3px 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.check-line .ph,
+.check-tally .ph {
+    flex: none;
+    font-size: 14px;
+}
+
+.check-line.ok { color: var(--green); }
+.check-line.bad { color: var(--ink); font-weight: 600; }
+.check-line.warn { color: var(--ink); }
+
+.check-tally { margin-top: 10px; }
+.check-tally.ok { color: var(--green); font-weight: 600; }
+.check-tally.bad { color: var(--ink); font-weight: 600; }
+
+.btn[data-check-button].is-ok {
+    border-color: var(--green);
+    color: var(--green);
+}
+
+.btn[data-check-button].is-bad {
+    background: var(--sand);
+    border-color: var(--ink);
+    color: var(--ink);
+}
+
+.checking {
+    display: inline-block;
+    animation: check-spin 0.9s linear infinite;
+}
+
+@keyframes check-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .checking { animation: none; }
+}

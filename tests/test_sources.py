@@ -1,9 +1,12 @@
+import json
 import os
 import re
+import tempfile
 import uuid
 from pathlib import Path
 
 import tests.bootstrap  # noqa: F401
+from tests.bootstrap import ensure_identity
 
 from django.conf import settings
 from django.contrib.auth.models import Group, User
@@ -18,6 +21,7 @@ from kopi.identity import (
     load_identity,
 )
 from kopi.models import AuditEvent, Source
+from tests.test_checks import tool_dir
 
 
 def _client():
@@ -360,3 +364,142 @@ def _():
         os.environ["PATH"] = previous_path
         if created_key and key.exists():
             key.unlink()
+
+
+def _check(client, token: str, data: dict) -> str:
+    """The lines the Test button gets back, as text."""
+    response = client.post(reverse("source-test"), {"csrfmiddlewaretoken": token, **data})
+    assert response.status_code == 200, response.content.decode()
+    return response.content.decode()
+
+
+@test("a source form tests the tree or the connection it names, and saves nothing")
+def _():
+    token = uuid.uuid4().hex[:8]
+    folder_name = f"chk-{token}"
+    pg_name = f"pg-{token}"
+    taken_name = f"taken-{token}"
+    password = f"pw-{token}"
+    admin = _user(f"chk-admin-{token}", "admin")
+    viewer = _user(f"chk-viewer-{token}", "viewer")
+    base = Path(tempfile.mkdtemp(prefix="kopi-check-"))
+    root = base / "uploads"
+    root.mkdir()
+    (root / "a.txt").write_text("a")
+    tools = tool_dir(base, dump_version="16.4", out="16.4\n")
+    ensure_identity()
+    Source.objects.create(name=taken_name, kind=Source.Kind.FOLDER, root_path=str(root))
+    previous_path = os.environ.get("PATH", "")
+    os.environ["PATH"] = f"{tools}{os.pathsep}{previous_path}"
+    try:
+        client = _client()
+        client.force_login(admin)
+        page = client.get(reverse("source-new") + "?kind=folder")
+        body = page.content.decode()
+        csrf = _csrf(body)
+        assert f'data-check="{reverse("source-test")}"' in body
+        assert "data-check-button" in body
+        assert "data-check-out" in body
+        assert "js/checks.js" in body
+        assert "css/checks.css" in body
+
+        assert client.get(reverse("source-test")).status_code == 405
+
+        anonymous = _client()
+        sign_in = anonymous.get(reverse("login"))
+        no_session = anonymous.post(
+            reverse("source-test"),
+            {
+                "csrfmiddlewaretoken": _csrf(sign_in.content.decode()),
+                "kind": "folder",
+                "name": folder_name,
+                "root_path": str(root),
+            },
+        )
+        assert no_session.status_code == 302, no_session.content.decode()
+        assert reverse("login") in no_session.url
+
+        viewer_client = _client()
+        viewer_client.force_login(viewer)
+        viewer_body = viewer_client.get(reverse("sources"), follow=True).content.decode()
+        assert "Shield" not in viewer_body
+        refused = viewer_client.post(
+            reverse("source-test"),
+            {
+                "csrfmiddlewaretoken": _csrf(viewer_body),
+                "kind": "folder",
+                "name": folder_name,
+                "root_path": str(root),
+            },
+        )
+        assert refused.status_code == 403
+        assert not Source.objects.filter(name=folder_name).exists()
+
+        good = _check(client, csrf, {"kind": "folder", "name": folder_name, "root_path": str(root)})
+        assert f"{root} is a directory Kopi can read." in good
+        assert "1 entry" in good
+        assert "Ready to save." in good
+        assert "data-check-line" in good
+        assert AuditEvent.objects.filter(
+            user=admin, kind="checked", event=f"Source checked · {folder_name} · ready"
+        ).exists()
+
+        gone = _check(client, csrf, {"kind": "folder", "name": folder_name, "root_path": str(base / "nope")})
+        assert "is not a directory" in gone
+        assert "data-bad" in gone
+        assert "Fix the lines above before saving." in gone
+
+        empty = _check(
+            client,
+            csrf,
+            {"kind": "folder", "name": folder_name, "root_path": str(root), "include_rules": "*.mov"},
+        )
+        assert "would be empty" in empty
+
+        taken = _check(client, csrf, {"kind": "folder", "name": taken_name, "root_path": str(root)})
+        assert "already has this name" in taken
+        assert "is a directory Kopi can read" not in taken
+        assert not Source.objects.filter(name=folder_name).exists()
+        # A form that does not validate never reaches out, so it is not logged.
+        assert not AuditEvent.objects.filter(
+            kind="checked", event__contains=f"· {taken_name}"
+        ).exists()
+
+        pg_page = client.get(reverse("source-new") + "?kind=postgres")
+        pg_csrf = _csrf(pg_page.content.decode())
+        fields = {
+            "name": pg_name,
+            "pg_host": "db.internal",
+            "pg_port": "5432",
+            "pg_database": "billing",
+            "pg_user": "kopi",
+            "pg_dump_binary": os.fspath(tools / "pg_dump"),
+        }
+        first = _check(client, pg_csrf, {"kind": "postgres", "pg_password": password, **fields})
+        assert "db.internal:5432 answered. billing opened as kopi." in first
+        assert "pg_dump 16.4 against server 16.4" in first
+        assert password not in first
+        record = json.loads((base / "record.json").read_text())
+        assert password in record["pgpass"]
+        assert password not in " ".join(record["argv"])
+
+        saved = _post(client, reverse("source-new"), pg_csrf, {"kind": "postgres", "pg_password": password, **fields})
+        assert saved.status_code == 200
+        row = Source.objects.get(name=pg_name)
+        edit_body = client.get(reverse("source", args=[row.pk])).content.decode()
+        assert f'<input type="hidden" name="pk" value="{row.pk}">' in edit_body
+
+        # The password box is blank, so the check tries the stored ciphertext.
+        again = _check(
+            client,
+            _csrf(edit_body),
+            {"pk": row.pk, "pg_password": "", **fields},
+        )
+        assert "db.internal:5432 answered. billing opened as kopi." in again
+        assert password not in again
+        assert "There is nothing stored to try." not in again
+        tried = json.loads((base / "record.json").read_text())
+        assert password in tried["pgpass"]
+        assert not Source.objects.filter(name=folder_name).exists()
+    finally:
+        os.environ["PATH"] = previous_path

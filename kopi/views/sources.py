@@ -12,13 +12,20 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.views.decorators.http import require_POST
 
+from kopi import checks
 from kopi.access import is_admin, require_admin
-from kopi.audit import note_source_changed, note_source_created, note_source_removed
+from kopi.audit import (
+    note_check,
+    note_source_changed,
+    note_source_created,
+    note_source_removed,
+)
 from kopi.forms.sources import FolderSourceForm, PostgresSourceForm
 from kopi.identity import IdentityError, encrypt_secret
 from kopi.rekey import open_identity
 from kopi.models import Source
 from kopi.postgres import POOLER_EXPLAINED, find_dump_binaries, pooler_reason
+from kopi.views.checks import render_check, saved
 
 
 def sources(request):
@@ -59,6 +66,45 @@ def new_source(request):
         form=_blank_form(None, kind, binaries),
         binaries=binaries,
     )
+
+
+@require_admin
+@require_POST
+def test_source(request):
+    """Try the values that are sitting in the form. Nothing is saved."""
+    row = saved(Source, request.POST.get("pk"))
+    kind = row.kind if row is not None else _kind(request.POST.get("kind"))
+    form = _bound_form(kind, request.POST, row, _binaries(row))
+    if not form.is_valid():
+        return render_check(request, checks.form_report(form))
+    cleaned = form.cleaned_data
+    draft = _draft(row, kind, cleaned)
+    report = checks.source(draft, password=cleaned.get("pg_password") or None)
+    note_check(request.user, "Source", cleaned["name"], passed=report.passed)
+    return render_check(request, report)
+
+
+def _draft(row: Source | None, kind: str, cleaned: dict) -> Source:
+    """The form values as a source that was never written.
+
+    Stored ciphertext travels with a saved row, so a blank password field is
+    tried with the password that is already on disk.
+    """
+    draft = Source(
+        name=cleaned["name"],
+        kind=kind,
+        root_path=cleaned.get("root_path", ""),
+        include_rules=cleaned.get("include_rules", ""),
+        exclude_rules=cleaned.get("exclude_rules", ""),
+        pg_host=cleaned.get("pg_host", ""),
+        pg_port=cleaned.get("pg_port") or 5432,
+        pg_database=cleaned.get("pg_database", ""),
+        pg_user=cleaned.get("pg_user", ""),
+        pg_dump_binary=cleaned.get("pg_dump_binary", ""),
+    )
+    if row is not None:
+        draft.pg_password = row.pg_password
+    return draft
 
 
 def _save(request, source: Source | None):
@@ -337,6 +383,7 @@ def _values(source: Source) -> tuple:
 urlpatterns = [
     path("sources/", sources, name="sources"),
     path("sources/new/", new_source, name="source-new"),
+    path("sources/test/", test_source, name="source-test"),
     path("sources/<int:pk>/remove/", remove_source, name="source-remove"),
     path("sources/<int:pk>/", source_detail, name="source"),
 ]

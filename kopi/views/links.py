@@ -14,8 +14,10 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from kopi import checks
 from kopi.access import is_admin, require_admin
 from kopi.audit import (
+    note_check,
     note_link_changed,
     note_link_created,
     note_link_queued,
@@ -25,22 +27,10 @@ from kopi.audit import (
 )
 from kopi.forms.links import LinkForm
 from kopi.models import DEFAULT_SCRIPT_TIMEOUT_SECONDS, Link, Run, Source, Target
+from kopi.schedule import stamp
+from kopi.views.checks import render_check, saved
 
 _BUSY = (Run.Status.PENDING, Run.Status.RUNNING)
-_MONTHS = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-)
 _ORDER = ("source__name", "target__name", "pk")
 
 
@@ -80,6 +70,33 @@ def run_link(request, pk):
     row = get_object_or_404(_links(), pk=pk)
     _queue(request, row)
     return redirect("link", row.pk)
+
+
+@require_admin
+@require_POST
+def test_link(request):
+    """Would this job run? Try both ends, the schedule, and the two hook paths."""
+    row = saved(Link, request.POST.get("pk"))
+    form = LinkForm(request.POST)
+    if not form.is_valid():
+        return render_check(request, checks.form_report(form))
+    cleaned = form.cleaned_data
+    report = checks.link(
+        source_row=cleaned["source"],
+        target_row=cleaned["target"],
+        pre_script_path=cleaned["pre_script_path"],
+        post_script_path=cleaned["post_script_path"],
+        cadence=cleaned["cadence"],
+        timezone_name=cleaned["timezone"],
+        enabled=row.enabled if row is not None else True,
+    )
+    note_check(
+        request.user,
+        "Link",
+        f"{cleaned['source'].name} → {cleaned['target'].name}",
+        passed=report.passed,
+    )
+    return render_check(request, report)
 
 
 def _save(request, link: Link | None):
@@ -341,13 +358,13 @@ def _hook(path: str, timeout: int, *, empty: bool) -> str:
 
 
 def _when(moment) -> str:
-    local = timezone.localtime(moment)
-    return f"{local.day} {_MONTHS[local.month - 1]} {local.strftime('%H:%M')}"
+    return stamp(timezone.localtime(moment))
 
 
 urlpatterns = [
     path("links/", links, name="links"),
     path("links/new/", new_link, name="link-new"),
+    path("links/test/", test_link, name="link-test"),
     path("links/<int:pk>/run/", run_link, name="link-run"),
     path("links/<int:pk>/remove/", remove_link, name="link-remove"),
     path("links/<int:pk>/", link_detail, name="link"),

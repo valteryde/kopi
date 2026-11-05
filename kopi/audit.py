@@ -24,6 +24,7 @@ LINK_RETIRED = "link_retired"
 LINK_RESUMED = "link_resumed"
 SOURCE_REMOVED = "source_removed"
 TARGET_REMOVED = "target_removed"
+CHECKED = "checked"
 USER_CREATED = "user_created"
 USER_DISABLED = "user_disabled"
 USER_ENABLED = "user_enabled"
@@ -51,6 +52,7 @@ ICONS = {
     LINK_RESUMED: "play",
     SOURCE_REMOVED: "trash",
     TARGET_REMOVED: "trash",
+    CHECKED: "plugs",
     USER_CREATED: "user-plus",
     USER_DISABLED: "prohibit",
     USER_ENABLED: "check",
@@ -92,6 +94,15 @@ def note_source_changed(user, name: str) -> None:
 
 def note_source_removed(user, name: str) -> None:
     _user(user, SOURCE_REMOVED, f"Source removed · {name}")
+
+
+def note_check(user, what: str, name: str, *, passed: bool) -> None:
+    """One line for a Test button that reached the network, and what it found."""
+    _user(
+        user,
+        CHECKED,
+        f"{what} checked · {name} · {'ready' if passed else 'not ready'}",
+    )
 
 
 def note_target_created(user, name: str) -> None:

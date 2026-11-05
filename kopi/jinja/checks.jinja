@@ -1,0 +1,15 @@
+{# One line per thing the Test button asked about. A fragment, not a page. #}
+{% import "macros.jinja" as ui %}
+{% for section in sections %}
+{% if section.title %}
+<p class="check-group" data-check-group>{{ section.title }}</p>
+{% endif %}
+{% for line in section.lines %}
+<p class="check-line {{ line.tone }}"{% if line.tone == "bad" %} data-bad{% endif %} data-check-line>{{ ui.icon(line.icon) }} {{ line.text }}</p>
+{% endfor %}
+{% endfor %}
+{% if passed %}
+<p class="check-tally ok" data-check-line>{{ ui.icon("check-circle") }} Ready to save.</p>
+{% else %}
+<p class="check-tally bad" data-check-line data-bad>{{ ui.icon("x") }} Fix the lines above before saving.</p>
+{% endif %}

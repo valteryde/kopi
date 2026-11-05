@@ -17,6 +17,10 @@
 
 {% block title %}Targets · Kopi{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static('css/checks.css') }}">
+{% endblock %}
+
 {% block main %}
 {% call ui.page_head("Targets", "cloud", "A target is an S3 bucket. The object payload is ciphertext.") %}
     {{ ui.search_field("find-targets", "Search targets", "Search targets", "#target-rows .pick", "target") }}
@@ -47,8 +51,9 @@
         {% else %}
         <div class="detail">
             <h2>{% if mode == "new" %}{{ ui.icon("plus") }} New target{% else %}{{ ui.icon("cloud") }} {{ target.name }}{% endif %}</h2>
-            <form method="post" action="{% if mode == 'new' %}{{ url('target-new') }}{% else %}{{ url('target', args=[target.pk]) }}{% endif %}" autocomplete="off">
+            <form method="post" action="{% if mode == 'new' %}{{ url('target-new') }}{% else %}{{ url('target', args=[target.pk]) }}{% endif %}" autocomplete="off" data-check="{{ url('target-test') }}">
                 {{ csrf_input }}
+                {% if mode == "edit" %}<input type="hidden" name="pk" value="{{ target.pk }}">{% endif %}
                 {% for error in form.non_field_errors() %}
                 <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
                 {% endfor %}
@@ -86,8 +91,10 @@
                 </label>
                 <p class="hint">{{ ui.icon("info") }} {{ hint }}</p>
                 <div class="detail-actions">
+                    <button type="button" class="btn" data-check-button>{{ ui.icon("plugs") }} Test</button>
                     <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
                 </div>
+                <div class="check" data-check-out role="status" aria-live="polite" hidden></div>
             </form>
             {% if mode == "edit" %}
             <form method="post" action="{{ url('target-remove', args=[target.pk]) }}">
@@ -108,4 +115,5 @@
 
 {% block scripts %}
 <script type="module" src="{{ static('js/filter.js') }}"></script>
+<script type="module" src="{{ static('js/checks.js') }}"></script>
 {% endblock %}

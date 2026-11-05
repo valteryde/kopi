@@ -75,6 +75,7 @@ The data volume holds SQLite, `secret.key`, and the Django session key. The work
 ## Tests
 
 Tests are Ward tests. They cover schedule math, the run state machine, retention, and the pre and post failure rules. They also feed the pipeline a stream larger than the buffer and check that memory stays flat, that a missing marker deletes the partial and runs the post script, that a valid marker uploads without calling `pg_dump` again, and that the `pg_dump` argument list contains no password. S3 is a fake storage implementation. Hook scripts, `tar`, `zstd`, and `age` run for real in a temporary directory. Postgres is only required by tests that take a dump.
+The check lines have their own tests: `psql` is a stub script that records the argv it was given and the pgpass file it read, and the S3 probe runs against a fake client that answers the calls a run makes and fails each one on cue. Tests tagged `integration` open a real connection to the Compose Postgres and write a real probe object to Garage, then assert the bucket holds nothing under the probe prefix afterwards.
 
 ## Left out
 

@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 
 import tests.bootstrap  # noqa: F401
+from tests.bootstrap import ensure_identity
 
 from django.conf import settings
 from django.contrib.auth.models import Group, User
@@ -17,6 +18,7 @@ from kopi.identity import (
     load_identity,
 )
 from kopi.models import AuditEvent, Target
+from tests.bootstrap import ensure_identity
 
 
 def _client():
@@ -196,3 +198,96 @@ def _():
     finally:
         if created_key and key.exists():
             key.unlink()
+
+
+def _check(client, token: str, data: dict) -> str:
+    """The lines the Test button gets back, as text."""
+    response = client.post(reverse("target-test"), {"csrfmiddlewaretoken": token, **data})
+    assert response.status_code == 200, response.content.decode()
+    return response.content.decode()
+
+
+@test("a target form tests the bucket it names, and saves nothing")
+def _():
+    token = uuid.uuid4().hex[:8]
+    name = f"chk-{token}"
+    secret = f"sek-{token}"
+    admin = _user(f"chk-admin-{token}", "admin")
+    viewer = _user(f"chk-viewer-{token}", "viewer")
+    ensure_identity()
+    fields = {
+        "name": name,
+        "endpoint": "http://127.0.0.1:1",
+        "region": "garage",
+        "bucket": f"b-{token}",
+        "addressing": "path",
+        "access_key": "GK0123456789abcdef01234567",
+        "secret": secret,
+    }
+
+    client = _client()
+    client.force_login(admin)
+    page = client.get(reverse("target-new"))
+    body = page.content.decode()
+    csrf = _csrf(body)
+    assert f'data-check="{reverse("target-test")}"' in body
+    assert "data-check-button" in body
+    assert "data-check-out" in body
+    assert "js/checks.js" in body
+    assert "css/checks.css" in body
+
+    assert client.get(reverse("target-test")).status_code == 405
+
+    viewer_client = _client()
+    viewer_client.force_login(viewer)
+    viewer_body = viewer_client.get(reverse("targets"), follow=True).content.decode()
+    refused = viewer_client.post(reverse("target-test"), {"csrfmiddlewaretoken": _csrf(viewer_body), **fields})
+    assert refused.status_code == 403
+
+    answered = _check(client, csrf, fields)
+    assert "The endpoint did not answer" in answered
+    assert AuditEvent.objects.filter(
+        user=admin, kind="checked", event=f"Target checked · {name} · not ready"
+    ).exists()
+    assert "data-bad" in answered
+    assert "Fix the lines above before saving." in answered
+    assert secret not in answered
+    assert not Target.objects.filter(name=name).exists()
+
+    # The form has to be satisfied before anything reaches for the endpoint.
+    logged = AuditEvent.objects.filter(kind="checked", event__contains=f"· {name}").count()
+    needs = _check(client, csrf, {**fields, "bucket": "", "secret": ""})
+    assert "Bucket is required." in needs
+    assert "Secret is required." in needs
+    assert "The endpoint did not answer" not in needs
+    assert AuditEvent.objects.filter(kind="checked", event__contains=f"· {name}").count() == logged
+
+    saved = _post(client, reverse("target-new"), csrf, fields)
+    assert saved.status_code == 200
+    row = Target.objects.get(name=name)
+    assert secret not in row.secret_access_key
+    assert decrypt_secret(load_identity(Path(settings.DATA_DIR) / IDENTITY_FILENAME), row.secret_access_key) == secret
+
+    edit_body = client.get(reverse("target", args=[row.pk])).content.decode()
+    assert f'<input type="hidden" name="pk" value="{row.pk}">' in edit_body
+
+    # Both boxes are blank, so the check uses the stored ciphertext. Had it
+    # found nothing, the line would say so instead of naming the endpoint.
+    again = _check(
+        client,
+        _csrf(edit_body),
+        {
+            "pk": row.pk,
+            "name": name,
+            "endpoint": row.endpoint_url,
+            "region": row.region,
+            "bucket": row.bucket,
+            "addressing": "path" if row.path_style else "virtual",
+            "access_key": "",
+            "secret": "",
+        },
+    )
+    assert "The endpoint did not answer" in again
+    assert "no access key and secret" not in again
+    assert secret not in again
+    assert Target.objects.filter(name=name).count() == 1

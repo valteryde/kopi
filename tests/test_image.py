@@ -15,8 +15,8 @@ from pathlib import Path
 
 from ward import skip, test
 
-from kopi.storage import S3Storage
-from tests.test_harness import runtime_env
+from kopi.storage import CHECK_PREFIX, S3Storage
+from tests.test_harness import listed_keys, runtime_env
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "https://127.0.0.1:8443"
@@ -281,6 +281,14 @@ def _delete_prefix(storage, name):
         storage.delete(item.key)
 
 
+def _check(site, path, fields):
+    """The Test button's request. It answers with lines and writes nothing."""
+    status, _url, body = site.open(path, fields)
+    assert status == 200, body[:400]
+    assert "data-check-line" in body, body[:400]
+    return body
+
+
 def _link(site, source_id, target_id):
     return _pk(
         _save(
@@ -339,7 +347,7 @@ def _():
     assert "./harness/folder:/fixtures/folder:ro" in app
 
 
-@test("the image has age, both pg_dump majors, and no dev secrets", tags=["image"])
+@test("the image has age, psql, both pg_dump majors, and no dev secrets", tags=["image"])
 @skip("the image is not answering", when=image_is_down)
 def _():
     listed = _compose("images", "-q", "app")
@@ -363,6 +371,8 @@ test "$(id -g kopi)" = 10001
 /usr/lib/postgresql/18/bin/pg_dump --version | grep -q ' 18\.'
 test -x /usr/lib/postgresql/17/bin/pg_restore
 test -x /usr/lib/postgresql/18/bin/pg_restore
+test -x /usr/lib/postgresql/17/bin/psql
+test -x /usr/lib/postgresql/18/bin/psql
 /opt/kopi/.venv/bin/python -c 'import boto3, gunicorn, importlib.util, sys; sys.exit(0 if importlib.util.find_spec("ward") is None else 1)'
 unset KOPI_ALLOWED_HOSTS
 set +e
@@ -462,6 +472,71 @@ def _():
             "targets",
         )
         folder_link = _link(site, folder_id, target_id)
+
+        # The Test button reaches the server, the bucket, and the job the run
+        # will reach. The password and secret boxes stay empty, so the check
+        # uses what the install stored.
+        _code, _url, page = site.open(f"/sources/{database_id}/")
+        database_check = _check(
+            site,
+            "/sources/test/",
+            {
+                "csrfmiddlewaretoken": _csrf(page),
+                "pk": database_id,
+                "name": database_name,
+                "pg_host": "postgres",
+                "pg_port": "5432",
+                "pg_database": env["POSTGRES_DB"],
+                "pg_user": env["POSTGRES_USER"],
+                "pg_password": "",
+                "pg_dump_binary": binary,
+            },
+        )
+        assert "postgres:5432 answered" in database_check, database_check[:600]
+        assert "pg_dump 18 against server 18" in database_check, database_check[:600]
+
+        _code, _url, page = site.open(f"/targets/{target_id}/")
+        target_check = _check(
+            site,
+            "/targets/test/",
+            {
+                "csrfmiddlewaretoken": _csrf(page),
+                "pk": target_id,
+                "name": target_name,
+                "endpoint": "http://garage:3900",
+                "region": env["GARAGE_S3_REGION"],
+                "bucket": env["GARAGE_BUCKET"],
+                "addressing": "path",
+                "access_key": "",
+                "secret": "",
+            },
+        )
+        assert "wrote, read back, and removed a probe object" in target_check, target_check[:600]
+        assert "Ready to save." in target_check, target_check[:600]
+        assert listed_keys(storage.client, env["GARAGE_BUCKET"], CHECK_PREFIX) == []
+
+        _code, _url, page = site.open(f"/links/{folder_link}/")
+        link_check = _check(
+            site,
+            "/links/test/",
+            {
+                "csrfmiddlewaretoken": _csrf(page),
+                "pk": folder_link,
+                "source": folder_id,
+                "target": target_id,
+                "cadence": "0 0 1 1 *",
+                "timezone": "UTC",
+                "retention": "count",
+                "retention_count": "14",
+                "pre_script_path": "",
+                "post_script_path": "",
+                "pre_script_timeout": "300",
+                "post_script_timeout": "300",
+            },
+        )
+        assert "Ready to save." in link_check, link_check[:900]
+        assert ">Source</p>" in link_check and ">Work volume</p>" in link_check
+
         folder_runs = _run_now(site, folder_link, seen)
         made = _compose("exec", "-T", "-u", "root", "app", "chmod", "777", "/restore")
         assert made.returncode == 0, made.stderr

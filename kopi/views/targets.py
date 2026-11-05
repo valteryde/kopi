@@ -12,12 +12,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.views.decorators.http import require_POST
 
+from kopi import checks
 from kopi.access import is_admin, require_admin
-from kopi.audit import note_target_changed, note_target_created, note_target_removed
+from kopi.audit import (
+    note_check,
+    note_target_changed,
+    note_target_created,
+    note_target_removed,
+)
 from kopi.forms.targets import TargetForm
 from kopi.identity import IdentityError, encrypt_secret
 from kopi.rekey import open_identity
 from kopi.models import Target
+from kopi.views.checks import render_check, saved
 
 _HINT = "Object names stay readable. They carry the source, the time, and a checksum."
 
@@ -50,6 +57,34 @@ def new_target(request):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET", "POST"])
     return _render(request, selected=None, target=None, form=_blank_form(None))
+
+
+@require_admin
+@require_POST
+def test_target(request):
+    """Try the values that are sitting in the form. Nothing is saved."""
+    row = saved(Target, request.POST.get("pk"))
+    form = TargetForm(request.POST, target=row)
+    if not form.is_valid():
+        return render_check(request, checks.form_report(form))
+    cleaned = form.cleaned_data
+    draft = Target(
+        name=cleaned["name"],
+        bucket=cleaned["bucket"],
+        endpoint_url=cleaned["endpoint"],
+        region=cleaned["region"],
+        path_style=cleaned["addressing"] == "path",
+    )
+    if row is not None:
+        draft.access_key_id = row.access_key_id
+        draft.secret_access_key = row.secret_access_key
+    report = checks.target(
+        draft,
+        access_key=cleaned["access_key"] or None,
+        secret=cleaned["secret"] or None,
+    )
+    note_check(request.user, "Target", cleaned["name"], passed=report.passed)
+    return render_check(request, report)
 
 
 def _save(request, target: Target | None):
@@ -238,6 +273,7 @@ def _values(target: Target) -> tuple:
 urlpatterns = [
     path("targets/", targets, name="targets"),
     path("targets/new/", new_target, name="target-new"),
+    path("targets/test/", test_target, name="target-test"),
     path("targets/<int:pk>/remove/", remove_target, name="target-remove"),
     path("targets/<int:pk>/", target_detail, name="target"),
 ]

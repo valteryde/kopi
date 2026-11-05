@@ -27,6 +27,10 @@
 
 {% block title %}Sources · Kopi{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static('css/checks.css') }}">
+{% endblock %}
+
 {% block main %}
 {% call ui.page_head("Sources", "database", "A source is one Postgres database or one folder tree.") %}
     {{ ui.search_field("find-sources", "Search sources", "Search sources", "#source-rows .pick", "source") }}
@@ -65,9 +69,9 @@
             {% else %}
             <h2>{{ ui.icon("database" if kind == "postgres" else "folder") }} {{ source.name }}</h2>
             {% endif %}
-            <form method="post" action="{% if mode == 'new' %}{{ url('source-new') }}{% else %}{{ url('source', args=[source.pk]) }}{% endif %}" autocomplete="off">
+            <form method="post" action="{% if mode == 'new' %}{{ url('source-new') }}{% else %}{{ url('source', args=[source.pk]) }}{% endif %}" autocomplete="off" data-check="{{ url('source-test') }}">
                 {{ csrf_input }}
-                {% if mode == "new" %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+                {% if mode == "new" %}<input type="hidden" name="kind" value="{{ kind }}">{% else %}<input type="hidden" name="pk" value="{{ source.pk }}">{% endif %}
                 {% for error in form.non_field_errors() %}
                 <p class="hint error" role="alert">{{ ui.icon("warning") }} {{ error }}</p>
                 {% endfor %}
@@ -118,8 +122,10 @@
                 {% endif %}
                 {% endif %}
                 <div class="detail-actions">
+                    <button type="button" class="btn" data-check-button>{{ ui.icon("plugs") }} Test</button>
                     <button type="submit" class="btn primary">{{ ui.icon("check") }} Save</button>
                 </div>
+                <div class="check" data-check-out role="status" aria-live="polite" hidden></div>
             </form>
             {% if mode == "edit" %}
             <form method="post" action="{{ url('source-remove', args=[source.pk]) }}">
@@ -140,4 +146,5 @@
 
 {% block scripts %}
 <script type="module" src="{{ static('js/filter.js') }}"></script>
+<script type="module" src="{{ static('js/checks.js') }}"></script>
 {% endblock %}

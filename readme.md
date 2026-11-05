@@ -19,6 +19,31 @@ The scripts stay on disk. Kopi runs each as `bash <path>`, as the Kopi user. An 
 
 One link does not overlap itself. The worker runs one backup at a time. A backup that moves no bytes for 15 minutes fails.
 
+## Test it before you save it
+
+Every source, target, and link form carries a **Test** button beside Save. It takes the values as they stand in the form, tries them, and answers line by line. Nothing is saved, and no backup byte moves.
+
+```text
+Source
+  ✓ /srv/uploads is a directory Kopi can read
+  · The archive would hold 3 entries
+Target
+  ✓ The bucket kopi-eu answered. Kopi can list it
+  ✓ Kopi can start a multipart upload in it
+  ✓ Kopi wrote, read back, and removed a probe object
+Schedule
+  ✓ The next run is 6 Nov 02:00 Europe/Copenhagen
+Hooks
+  ✓ Pre script /hooks/freeze.sh is a file Kopi may run
+  · Post script is not set. That step is skipped
+Work volume
+  ✓ /work has 41.6 GB free. The floor is 64 MB
+```
+
+A folder tree is walked and counted, and a rule that matches nothing is a cross rather than a note, because that run would have written an empty archive. A database gets one connection: `psql`, a pgpass file mode `0600` deleted again, and `server_version` back. A bucket gets the calls a run makes — list, multipart start and abort, write, read back, delete — against a few bytes under `.kopi-check/` that are gone before the button answers.
+
+On a saved row, a blank password or credential box is tried with what is already stored. A link check tries both ends, prints when the cron would next fire, checks the two hook paths, and reports free space on the work volume. The probes are short, because a person is waiting: 12 seconds for `psql`, 5 and 10 for S3, no retries. A check that reached the network leaves one line in the audit log.
+
 ## Ciphertext, with a name you can read
 
 ```text

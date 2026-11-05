@@ -1,14 +1,19 @@
 import re
+import tempfile
 import uuid
+from pathlib import Path
 
 import tests.bootstrap  # noqa: F401
+from tests.bootstrap import ensure_identity
 
 from django.contrib.auth.models import Group, User
 from django.test import Client
 from django.urls import reverse
 from ward import test
 
+from kopi.identity import encrypt_secret
 from kopi.models import AuditEvent, Link, Run, Source, Target
+from tests.bootstrap import ensure_identity
 
 
 def _client():
@@ -252,3 +257,104 @@ def _():
     assert Run.objects.filter(link=link).count() == 1
     assert Run.objects.get(link=link).status == Run.Status.RUNNING
     assert AuditEvent.objects.filter(user=admin, event=queued).count() == 1
+
+
+def _check(client, token: str, data: dict) -> str:
+    """The lines the Test button gets back, as text."""
+    response = client.post(reverse("link-test"), {"csrfmiddlewaretoken": token, **data})
+    assert response.status_code == 200, response.content.decode()
+    return response.content.decode()
+
+
+@test("a link form tries both ends, the schedule, and the two hook paths without saving")
+def _():
+    token = uuid.uuid4().hex[:8]
+    admin = _user(f"lchk-admin-{token}", "admin")
+    viewer = _user(f"lchk-viewer-{token}", "viewer")
+    identity = ensure_identity()
+    base = Path(tempfile.mkdtemp(prefix="kopi-link-"))
+    root = base / "tree"
+    root.mkdir()
+    (root / "a.txt").write_text("a")
+    pre = base / "pre.sh"
+    pre.write_text("#!/bin/bash\nexit 0\n")
+    pre.chmod(0o755)
+    source = Source.objects.create(
+        name=f"lchk-src-{token}", kind=Source.Kind.FOLDER, root_path=str(root)
+    )
+    target = Target.objects.create(
+        name=f"lchk-tgt-{token}",
+        bucket=f"lchk-{token}",
+        endpoint_url="http://127.0.0.1:1",
+        region="garage",
+        path_style=True,
+        access_key_id=encrypt_secret(identity, "GK0123456789abcdef01234567"),
+        secret_access_key=encrypt_secret(identity, "sek-value"),
+    )
+
+    client = _client()
+    client.force_login(admin)
+    page = client.get(reverse("link-new"))
+    body = page.content.decode()
+    csrf = _csrf(body)
+    assert f'data-check="{reverse("link-test")}"' in body
+    assert "data-check-button" in body
+    assert "data-check-out" in body
+    assert "js/checks.js" in body
+    assert "css/checks.css" in body
+
+    assert client.get(reverse("link-test")).status_code == 405
+
+    viewer_client = _client()
+    viewer_client.force_login(viewer)
+    viewer_body = viewer_client.get(reverse("links"), follow=True).content.decode()
+    refused = viewer_client.post(
+        reverse("link-test"),
+        {"csrfmiddlewaretoken": _csrf(viewer_body), **_fields(source, target)},
+    )
+    assert refused.status_code == 403
+
+    text = _check(client, csrf, _fields(source, target, post_script_path=str(base / "gone.sh")))
+    assert "data-check-group" in text
+    for heading in ("Source", "Target", "Schedule", "Hooks", "Work volume"):
+        assert f">{heading}</p>" in text, heading
+    assert f"{root} is a directory Kopi can read." in text
+    assert "The endpoint did not answer" in text
+    assert "The next run is" in text
+    assert "Pre script is not set. That step is skipped." in text
+    assert "gone.sh is not a regular file" in text
+    assert "free." in text
+    assert "Ready to save." not in text
+    assert "sek-value" not in text
+    assert Link.objects.filter(source=source).count() == 0
+
+    runnable = _check(client, csrf, _fields(source, target, pre_script_path=str(pre), post_script_path=""))
+    assert "Pre script" in runnable and "is a file Kopi may run" in runnable
+    assert "Post script is not set." in runnable
+
+    # A form that does not validate is not probed at all.
+    assert AuditEvent.objects.filter(
+        user=admin, kind="checked", event=f"Link checked · {source.name} → {target.name} · not ready"
+    ).exists()
+
+    logged = AuditEvent.objects.filter(kind="checked", name=admin.username).count()
+    broken = _check(client, csrf, _fields(source, target, cadence="nine o'clock", timezone="Mars/Phobos"))
+    assert "Enter a valid cron expression." in broken
+    assert "Unknown timezone." in broken
+    assert "data-check-group" not in broken
+    assert AuditEvent.objects.filter(kind="checked", name=admin.username).count() == logged
+
+    retired = Link.objects.create(
+        source=source,
+        target=target,
+        cadence="0 2 * * *",
+        timezone="Europe/Copenhagen",
+        retention_kind=Link.Retention.COUNT,
+        retention_count=3,
+        enabled=False,
+    )
+    edit_body = client.get(reverse("link", args=[retired.pk])).content.decode()
+    assert f'<input type="hidden" name="pk" value="{retired.pk}">' in edit_body
+    again = _check(client, _csrf(edit_body), _fields(source, target, pk=str(retired.pk)))
+    assert "This link is retired. The schedule will not start it." in again
+    assert Link.objects.filter(pk=retired.pk, enabled=False).exists()
