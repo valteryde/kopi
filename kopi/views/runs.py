@@ -29,6 +29,7 @@ from kopi.postgres import restore_database
 from kopi.settings import data_directory, work_directory
 from kopi.schedule import stamp
 from kopi.storage import StorageError, parse_object_key
+from kopi.toast import set_toast
 
 # The phases a run row stores. `poll.js` reads the keys from the page.
 _PHASES = (
@@ -91,6 +92,7 @@ def restore_run(request, pk):
         return redirect("run", run.pk)
     note_restore(request.user, run.link.source.name, destination)
     request.session[_NOTE] = f"Restored {run.link.source.name} to {destination}."
+    set_toast(request, f"Restored {run.link.source.name} to {destination}.", "arrow-counter-clockwise")
     return redirect("run", run.pk)
 
 

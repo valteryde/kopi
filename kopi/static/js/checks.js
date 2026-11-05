@@ -1,3 +1,5 @@
+import { showToast } from "./toast.js";
+
 // Test a source, a target, or a link before saving it. The values sitting in
 // the form go to that screen's test URL, and the lines that come back take
 // the place of this area. The request saves nothing.
@@ -47,6 +49,7 @@ async function run(form, button, out, url) {
     button.classList.toggle("is-ok", !failed);
     label(button, failed ? "warning" : "check", failed ? "Not ready" : "Ready");
     button.disabled = false;
+    showToast(failed ? "Check reported issues." : "Check passed.", failed ? "warning" : "check");
 }
 
 function refuse(button, out) {
@@ -55,6 +58,7 @@ function refuse(button, out) {
     button.classList.remove("is-ok");
     label(button, "plugs", "Test");
     button.disabled = false;
+    showToast("The check did not answer.", "warning");
 }
 
 function label(button, icon, text, spin = false) {

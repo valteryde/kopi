@@ -28,6 +28,7 @@ from kopi.audit import (
 from kopi.forms.links import LinkForm
 from kopi.models import DEFAULT_SCRIPT_TIMEOUT_SECONDS, Link, Run, Source, Target
 from kopi.schedule import stamp
+from kopi.toast import set_toast
 from kopi.views.checks import render_check, saved
 
 _BUSY = (Run.Status.PENDING, Run.Status.RUNNING)
@@ -69,6 +70,7 @@ def new_link(request):
 def run_link(request, pk):
     row = get_object_or_404(_links(), pk=pk)
     _queue(request, row)
+    set_toast(request, f"Run queued for {row.source.name}.", "play")
     return redirect("link", row.pk)
 
 
@@ -104,6 +106,12 @@ def _save(request, link: Link | None):
     if form.is_valid():
         saved = _store(request, link, form)
         if saved is not None:
+            creating = link is None
+            label = f"{saved.source.name} → {saved.target.name}"
+            if creating:
+                set_toast(request, f"Link {label} created.", "plus")
+            else:
+                set_toast(request, f"Link {label} saved.")
             return redirect("link", saved.pk)
     return _render(
         request,
@@ -173,15 +181,18 @@ def remove_link(request, pk):
             row.enabled = True
             row.save(update_fields=["enabled"])
             note_link_resumed(request.user, row.source.name, row.target.name)
+        set_toast(request, f"Link {row.source.name} → {row.target.name} resumed.", "play")
         return redirect("link", row.pk)
     if action == "retire" or (action == "remove" and has_runs):
         _retire(request, row)
+        set_toast(request, f"Link {row.source.name} → {row.target.name} retired.", "prohibit")
         return redirect("link", row.pk)
     if action == "remove" and not has_runs:
         source = row.source.name
         target = row.target.name
         row.delete()
         note_link_removed(request.user, source, target)
+        set_toast(request, f"Link {source} → {target} removed.", "trash")
         return redirect("links")
     return redirect("link", row.pk)
 

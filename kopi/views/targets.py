@@ -24,6 +24,7 @@ from kopi.forms.targets import TargetForm
 from kopi.identity import IdentityError, encrypt_secret
 from kopi.rekey import open_identity
 from kopi.models import Target
+from kopi.toast import set_toast
 from kopi.views.checks import render_check, saved
 
 _HINT = "Object names stay readable. They carry the source, the time, and a checksum."
@@ -92,6 +93,11 @@ def _save(request, target: Target | None):
     if form.is_valid():
         saved = _store(request, target, form)
         if saved is not None:
+            creating = target is None
+            if creating:
+                set_toast(request, f"Target {saved.name} created.", "plus")
+            else:
+                set_toast(request, f"Target {saved.name} saved.")
             return redirect("target", saved.pk)
     return _render(
         request,
@@ -163,6 +169,7 @@ def remove_target(request, pk):
             form=_blank_form(row),
             remove_error="Remove the links that use this target first.",
         )
+    set_toast(request, f"Target {name} removed.", "trash")
     return redirect("targets")
 
 

@@ -18,6 +18,7 @@ from kopi.audit import note_key_replaced, note_user_created, note_user_disabled,
 from kopi.forms.users import UserForm
 from kopi.identity import IdentityError
 from kopi.rekey import RekeyError, replace_identity
+from kopi.toast import set_toast
 
 
 @require_admin
@@ -34,6 +35,7 @@ def _create(request):
     if form.is_valid():
         saved = _store(request, form)
         if saved is not None:
+            set_toast(request, f"User {saved.get_username()} added.", "user-plus")
             return redirect("users")
     return _render(request, form)
 
@@ -65,6 +67,9 @@ def set_active(request, pk):
     error = _set_active(request, row, enable)
     if error:
         return _render(request, UserForm(), error=error)
+    state = "enabled" if enable else "disabled"
+    icon = "check" if enable else "prohibit"
+    set_toast(request, f"User {row.get_username()} {state}.", icon)
     return redirect("users")
 
 

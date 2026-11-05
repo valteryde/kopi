@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ static('css/shell.css') }}">
     <link rel="stylesheet" href="{{ static('css/controls.css') }}">
     <link rel="stylesheet" href="{{ static('css/panel.css') }}">
+    <link rel="stylesheet" href="{{ static('css/toast.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -49,6 +50,12 @@
             {% block main %}{% endblock %}
         </div>
     </div>
+    {% if toast %}
+    <div id="toast" aria-live="polite">
+        <p class="toast{% if toast.icon == 'warning' %} warning{% elif toast.icon == 'x' %} bad{% endif %}">{{ ui.icon(toast.icon) }} {{ toast.text }}</p>
+    </div>
+    {% endif %}
+    <script type="module" src="{{ static('js/toast.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

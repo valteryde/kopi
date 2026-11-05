@@ -19,6 +19,7 @@ from kopi.identity import IdentityError, encrypt_secret
 from kopi.models import Channel, Source
 from kopi.notify import digest_label, digest_summary, format_when, link_digests
 from kopi.rekey import open_identity
+from kopi.toast import set_toast
 
 
 def mail(request):
@@ -38,6 +39,7 @@ def _save(request, channel: Channel | None):
     if form.is_valid():
         saved = _store(request, channel, form)
         if saved is not None:
+            set_toast(request, "Mail settings saved.", "check")
             return redirect("mail")
     return _render(request, channel, form)
 

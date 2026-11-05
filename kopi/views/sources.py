@@ -25,6 +25,7 @@ from kopi.identity import IdentityError, encrypt_secret
 from kopi.rekey import open_identity
 from kopi.models import Source
 from kopi.postgres import POOLER_EXPLAINED, find_dump_binaries, pooler_reason
+from kopi.toast import set_toast
 from kopi.views.checks import render_check, saved
 
 
@@ -114,6 +115,11 @@ def _save(request, source: Source | None):
     if form.is_valid():
         saved = _store(request, source, kind, form)
         if saved is not None:
+            creating = source is None
+            if creating:
+                set_toast(request, f"Source {saved.name} created.", "plus")
+            else:
+                set_toast(request, f"Source {saved.name} saved.")
             return redirect("source", saved.pk)
     return _render(
         request,
@@ -208,6 +214,7 @@ def remove_source(request, pk):
             binaries=binaries,
             remove_error="Remove the links that use this source first.",
         )
+    set_toast(request, f"Source {name} removed.", "trash")
     return redirect("sources")
 
 

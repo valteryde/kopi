@@ -60,8 +60,10 @@ def _():
         "/static/css/shell.css",
         "/static/css/controls.css",
         "/static/css/panel.css",
+        "/static/css/toast.css",
         "/static/css/icons.css",
         "/static/js/filter.js",
+        "/static/js/toast.js",
         "/static/icon.png",
     ):
         response = _get(path)
@@ -79,3 +81,32 @@ def _():
         response = _get(path)
         assert response.status_code == 200, path
         assert _bytes(response)[:4] == b"wOF2"
+
+
+@test("a toast is rendered once and cleared from the session on the next request")
+def _():
+    user, _ = User.objects.get_or_create(username="shell-toast")
+    group, _ = Group.objects.get_or_create(name="viewer")
+    user.groups.add(group)
+    client = _client()
+    client.force_login(user)
+
+    # Set toast in session
+    session = client.session
+    session["_toast"] = {"text": "Target saved successfully.", "icon": "check"}
+    session.save()
+
+    # First request: toast is rendered
+    response = client.get(reverse("runs"))
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'id="toast"' in body
+    assert "Target saved successfully." in body
+
+    # Second request: toast is gone
+    response2 = client.get(reverse("runs"))
+    assert response2.status_code == 200
+    body2 = response2.content.decode()
+    assert 'id="toast"' not in body2
+    assert "Target saved successfully." not in body2
+

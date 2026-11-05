@@ -79,6 +79,7 @@ TEMPLATES = [
             "environment": "kopi.jinja.environment",
             "context_processors": [
                 "kopi.access.operator",
+                "kopi.toast.context",
             ],
         },
     },
